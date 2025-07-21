@@ -13,14 +13,27 @@ from .config import config
 logger = logging.getLogger(__name__)
 
 
-def _cuda_is_available() -> bool:
-    """Check if CUDA is available without importing torch."""
+def _get_optimal_device() -> tuple[str, str]:
+    """Determine the optimal device and compute type for faster-whisper."""
     try:
         import torch
-        return torch.cuda.is_available()
+        
+        # Check for Apple Silicon GPU (Metal Performance Shaders)
+        if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            # Apple Silicon M1/M2/M3 with MPS support
+            return "auto", "float16"  # faster-whisper will auto-detect best device
+        
+        # Check for NVIDIA CUDA
+        elif torch.cuda.is_available():
+            return "cuda", "float16"
+            
+        # Fall back to CPU
+        else:
+            return "cpu", "int8"
+            
     except ImportError:
-        # If torch isn't available, assume CUDA isn't either
-        return False
+        # If torch isn't available, assume CPU
+        return "cpu", "int8"
 
 
 class AudioProcessor:
@@ -28,12 +41,17 @@ class AudioProcessor:
     
     def __init__(self, model_name: str = "medium"):
         self.model_name = model_name
-        # faster-whisper uses different device specification
-        self.device = "cuda" if _cuda_is_available() else "cpu"
-        self.compute_type = "float16" if self.device == "cuda" else "int8"
+        # Get optimal device and compute type for this system
+        self.device, self.compute_type = _get_optimal_device()
         self.model: Optional[WhisperModel] = None
         
-        logger.info(f"Initializing AudioProcessor with model '{model_name}' on {self.device}")
+        device_info = {
+            "auto": "Apple Silicon GPU (M1/M2/M3)",
+            "cuda": "NVIDIA GPU",
+            "cpu": "CPU"
+        }.get(self.device, self.device)
+        
+        logger.info(f"Initializing AudioProcessor with model '{model_name}' on {device_info} ({self.compute_type})")
     
     def _load_model(self) -> None:
         """Load faster-whisper model with error handling."""
