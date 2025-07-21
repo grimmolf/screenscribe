@@ -24,7 +24,7 @@
 ### What is screenscribe?
 
 **screenscribe** transforms videos into structured, searchable notes by combining:
-- 🎤 **Audio transcription** with OpenAI Whisper
+- 🎤 **Audio transcription** with faster-whisper (2-5x faster than OpenAI Whisper)
 - 👁️ **Visual analysis** with GPT-4 Vision
 - 📝 **Smart synthesis** into Markdown or HTML notes
 

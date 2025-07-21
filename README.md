@@ -13,7 +13,7 @@
 **screenscribe** is a CLI tool that processes videos and screen recordings to extract both audio transcripts and visual context, synthesizing them into comprehensive, structured notes. Perfect for technical tutorials, presentations, lectures, and meetings.
 
 **Key Features:**
-- 🎤 High-quality transcription with OpenAI Whisper
+- 🎤 High-quality transcription with faster-whisper (2-5x faster than OpenAI Whisper)
 - 👁️ AI-powered visual analysis with GPT-4 Vision  
 - 📝 Output in Markdown or HTML format
 - 📺 Support for YouTube videos and local files

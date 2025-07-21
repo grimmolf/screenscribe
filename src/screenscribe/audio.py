@@ -1,14 +1,13 @@
 """Audio processing module for screenscribe."""
 
-import whisper
-import torch
+from faster_whisper import WhisperModel
 from pathlib import Path
 import subprocess
 import tempfile
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
-import numpy as np
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
+import torch
 
 from .config import config
 
@@ -16,30 +15,43 @@ logger = logging.getLogger(__name__)
 
 
 class AudioProcessor:
-    """Handles audio extraction and transcription using Whisper."""
+    """Handles audio extraction and transcription using faster-whisper."""
     
     def __init__(self, model_name: str = "medium"):
         self.model_name = model_name
+        # faster-whisper uses different device specification
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model: Optional[whisper.Whisper] = None
+        self.compute_type = "float16" if self.device == "cuda" else "int8"
+        self.model: Optional[WhisperModel] = None
         
         logger.info(f"Initializing AudioProcessor with model '{model_name}' on {self.device}")
     
     def _load_model(self) -> None:
-        """Load Whisper model with error handling."""
+        """Load faster-whisper model with error handling."""
         if self.model is not None:
             return
         
         try:
-            logger.info(f"Loading Whisper model: {self.model_name}")
-            self.model = whisper.load_model(self.model_name, device=self.device)
-        except RuntimeError as e:
-            if "out of memory" in str(e) and self.device == "cuda":
+            logger.info(f"Loading faster-whisper model: {self.model_name}")
+            self.model = WhisperModel(
+                self.model_name, 
+                device=self.device,
+                compute_type=self.compute_type,
+                download_root=str(config.whisper_cache_dir) if hasattr(config, 'whisper_cache_dir') else None
+            )
+        except Exception as e:
+            if "out of memory" in str(e).lower() and self.device == "cuda":
                 logger.warning("GPU out of memory, falling back to CPU")
-                self.device = "cpu"
-                self.model = whisper.load_model(self.model_name, device="cpu")
+                self.device = "cpu" 
+                self.compute_type = "int8"
+                self.model = WhisperModel(
+                    self.model_name, 
+                    device="cpu",
+                    compute_type="int8",
+                    download_root=str(config.whisper_cache_dir) if hasattr(config, 'whisper_cache_dir') else None
+                )
             else:
-                raise RuntimeError(f"Failed to load Whisper model: {e}")
+                raise RuntimeError(f"Failed to load faster-whisper model: {e}")
     
     async def extract_audio(self, video_path: Path) -> Path:
         """Extract audio track from video file."""
@@ -81,23 +93,13 @@ class AudioProcessor:
             raise RuntimeError(f"Failed to extract audio: {e.stderr}")
     
     def transcribe(self, audio_path: Path, language: Optional[str] = None) -> Dict[str, Any]:
-        """Transcribe audio file using Whisper."""
+        """Transcribe audio file using faster-whisper."""
         logger.info(f"Transcribing audio: {audio_path}")
         
         self._load_model()
         
         if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
-        
-        # Load audio and check duration
-        audio = whisper.load_audio(str(audio_path))
-        duration = len(audio) / whisper.audio.SAMPLE_RATE
-        
-        # Handle very short audio by padding with silence
-        if duration < 0.5:
-            logger.warning(f"Audio duration ({duration:.2f}s) is very short, padding with silence")
-            silence_samples = int(0.5 * whisper.audio.SAMPLE_RATE)
-            audio = np.pad(audio, (0, silence_samples), mode='constant')
         
         # Create progress bar
         with Progress(
@@ -109,24 +111,61 @@ class AudioProcessor:
         ) as progress:
             task = progress.add_task("Transcribing audio...", total=100)
             
-            # Progress callback
-            def progress_callback(completed: float):
-                progress.update(task, completed=completed * 100)
-            
             try:
-                # Transcribe with word-level timestamps
-                result = self.model.transcribe(
-                    audio,
+                # faster-whisper returns segments and info separately
+                segments, info = self.model.transcribe(
+                    str(audio_path),
                     language=language,
                     word_timestamps=True,
-                    verbose=False,
-                    # Note: progress_callback might not be available in all Whisper versions
-                    # We'll implement a simpler approach
+                    vad_filter=True,  # Voice activity detection
+                    vad_parameters=dict(min_silence_duration_ms=500)
                 )
+                
+                progress.update(task, completed=50)
+                
+                # Convert segments to list and format similar to openai-whisper
+                segment_list = []
+                for segment in segments:
+                    segment_dict = {
+                        "id": segment.id,
+                        "seek": int(segment.start * 100),  # Convert to centiseconds
+                        "start": segment.start,
+                        "end": segment.end,
+                        "text": segment.text.strip(),
+                        "tokens": [],  # faster-whisper doesn't expose tokens by default
+                        "temperature": getattr(segment, 'temperature', 0.0),
+                        "avg_logprob": getattr(segment, 'avg_logprob', 0.0),
+                        "compression_ratio": getattr(segment, 'compression_ratio', 0.0),
+                        "no_speech_prob": getattr(segment, 'no_speech_prob', 0.0),
+                        "words": []
+                    }
+                    
+                    # Add word-level timestamps if available
+                    if hasattr(segment, 'words') and segment.words:
+                        for word in segment.words:
+                            word_dict = {
+                                "word": word.word,
+                                "start": word.start,
+                                "end": word.end,
+                                "probability": getattr(word, 'probability', 1.0)
+                            }
+                            segment_dict["words"].append(word_dict)
+                    
+                    segment_list.append(segment_dict)
                 
                 progress.update(task, completed=100)
                 
-                logger.info(f"Transcription completed. {len(result['segments'])} segments found")
+                # Format result to match openai-whisper structure
+                result = {
+                    "text": " ".join(segment["text"] for segment in segment_list),
+                    "segments": segment_list,
+                    "language": info.language,
+                    "language_probability": info.language_probability,
+                    "duration": info.duration,
+                    "duration_after_vad": getattr(info, 'duration_after_vad', info.duration)
+                }
+                
+                logger.info(f"Transcription completed. {len(segment_list)} segments found")
                 return result
                 
             except Exception as e:
@@ -137,6 +176,8 @@ class AudioProcessor:
         return {
             "model_name": self.model_name,
             "device": self.device,
-            "cache_dir": str(config.whisper_cache_dir),
-            "loaded": self.model is not None
+            "compute_type": self.compute_type,
+            "cache_dir": str(config.whisper_cache_dir) if hasattr(config, 'whisper_cache_dir') else None,
+            "loaded": self.model is not None,
+            "engine": "faster-whisper"
         }
