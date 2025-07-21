@@ -74,10 +74,24 @@ def transcribe_with_mlx(video_path: str, model: str = "base", language: Optional
     try:
         import mlx_whisper
         
+        # MLX whisper model mapping
+        mlx_model_map = {
+            "tiny": "mlx-community/whisper-tiny",
+            "base": "mlx-community/whisper-base", 
+            "small": "mlx-community/whisper-small",
+            "medium": "mlx-community/whisper-medium",
+            "large": "mlx-community/whisper-large-v2",
+            "large-v2": "mlx-community/whisper-large-v2",
+            "large-v3": "mlx-community/whisper-large-v3"
+        }
+        
+        mlx_model = mlx_model_map.get(model, "mlx-community/whisper-base")
+        
+        # MLX whisper API
         result = mlx_whisper.transcribe(
             video_path,
-            model=model,
-            language=language
+            path_or_hf_repo=mlx_model,
+            word_timestamps=True
         )
         
         # Format segments

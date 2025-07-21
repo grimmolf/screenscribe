@@ -1,56 +1,85 @@
 # Makefile for Screenscribe Fabric Extension
 
-.PHONY: build install clean test help
+.PHONY: build install clean test help uninstall build-all release-binaries
 
 # Default target
 help:
 	@echo "Screenscribe Fabric Extension Build System"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  build     - Build all Go helper tools"
+	@echo "  build     - Build all Go helper tools for current platform"
+	@echo "  build-all - Build for all supported platforms (macOS, Linux)"
 	@echo "  install   - Install tools to local bin directory"
 	@echo "  install-system - Install tools to system-wide bin directory (requires sudo)"
+	@echo "  uninstall - Remove tools and patterns (uses video_analyze --uninstall)"
+	@echo "  release-binaries - Create release binaries for distribution"
 	@echo "  clean     - Remove build artifacts"
 	@echo "  test      - Run basic functionality tests"
 	@echo "  deps      - Install dependencies"
 	@echo "  help      - Show this help message"
 	@echo ""
 
-# Build all Go tools
+# Build unified scribe tool for current platform
 build:
-	@echo "Building Go helper tools..."
+	@echo "Building scribe unified CLI..."
 	@mkdir -p bin
 	go mod download
-	go build -o bin/whisper_transcribe ./cmd/whisper_transcribe
-	go build -o bin/video_frames ./cmd/video_frames
-	go build -o bin/video_analyze ./cmd/video_analyze
-	@echo "Build complete. Binaries in ./bin/"
+	go build -o bin/scribe ./cmd/scribe
+	@echo "Build complete. Binary in ./bin/"
+
+# Build for all supported platforms
+build-all:
+	@echo "Building scribe for all supported platforms..."
+	@mkdir -p dist/{macos-amd64,macos-arm64,linux-amd64,linux-arm64}
+	go mod download
+	
+	@echo "Building for macOS AMD64..."
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/macos-amd64/scribe ./cmd/scribe
+	
+	@echo "Building for macOS ARM64 (Apple Silicon)..."
+	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/macos-arm64/scribe ./cmd/scribe
+	
+	@echo "Building for Linux AMD64 (Fedora/Ubuntu)..."
+	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/linux-amd64/scribe ./cmd/scribe
+	
+	@echo "Building for Linux ARM64..."
+	GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o dist/linux-arm64/scribe ./cmd/scribe
+	
+	@echo "Cross-compilation complete. Binaries in ./dist/"
 
 # Install to user's local bin directory
 install: build
 	@echo "Installing to ~/.local/bin/..."
 	@mkdir -p ~/.local/bin
-	cp bin/* ~/.local/bin/
+	cp bin/scribe ~/.local/bin/
 	cp scripts/whisper_wrapper.py ~/.local/bin/
 	cp scripts/extract_frames.sh ~/.local/bin/
-	chmod +x ~/.local/bin/whisper_wrapper.py ~/.local/bin/extract_frames.sh
+	cp scripts/youtube_helper.py ~/.local/bin/
+	chmod +x ~/.local/bin/whisper_wrapper.py ~/.local/bin/extract_frames.sh ~/.local/bin/youtube_helper.py
 	@echo "Installation complete. Make sure ~/.local/bin is in your PATH"
 	@echo "Add this to your shell profile if needed:"
 	@echo "  export PATH=\"\$$HOME/.local/bin:\$$PATH\""
+	@echo ""
+	@echo "For YouTube support, install yt-dlp:"
+	@echo "  pip install yt-dlp"
 
 # Install to system-wide bin directory
 install-system: build
 	@echo "Installing to /usr/local/bin/ (requires sudo)..."
-	sudo cp bin/* /usr/local/bin/
+	sudo cp bin/scribe /usr/local/bin/
 	sudo cp scripts/whisper_wrapper.py /usr/local/bin/
 	sudo cp scripts/extract_frames.sh /usr/local/bin/
-	sudo chmod +x /usr/local/bin/whisper_wrapper.py /usr/local/bin/extract_frames.sh
+	sudo cp scripts/youtube_helper.py /usr/local/bin/
+	sudo chmod +x /usr/local/bin/whisper_wrapper.py /usr/local/bin/extract_frames.sh /usr/local/bin/youtube_helper.py
 	@echo "System-wide installation complete."
+	@echo ""
+	@echo "For YouTube support, install yt-dlp:"
+	@echo "  pip install yt-dlp"
 
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
-	rm -rf bin/
+	rm -rf bin/ dist/ releases/
 	go mod tidy
 	@echo "Clean complete."
 
@@ -74,10 +103,11 @@ deps:
 test: build
 	@echo "Running basic functionality tests..."
 	@echo ""
-	@echo "Testing Go tool compilation..."
-	@./bin/whisper_transcribe --help >/dev/null && echo "✅ whisper_transcribe builds and runs" || echo "❌ whisper_transcribe failed"
-	@./bin/video_frames --help >/dev/null && echo "✅ video_frames builds and runs" || echo "❌ video_frames failed"
-	@./bin/video_analyze --help >/dev/null && echo "✅ video_analyze builds and runs" || echo "❌ video_analyze failed"
+	@echo "Testing scribe CLI compilation..."
+	@./bin/scribe --help >/dev/null && echo "✅ scribe builds and runs" || echo "❌ scribe failed"
+	@./bin/scribe analyze --help >/dev/null && echo "✅ scribe analyze subcommand works" || echo "❌ scribe analyze failed"
+	@./bin/scribe transcribe --help >/dev/null && echo "✅ scribe transcribe subcommand works" || echo "❌ scribe transcribe failed"
+	@./bin/scribe frames --help >/dev/null && echo "✅ scribe frames subcommand works" || echo "❌ scribe frames failed"
 	@echo ""
 	@echo "Testing script dependencies..."
 	@python3 scripts/whisper_wrapper.py --help >/dev/null 2>&1 && echo "✅ whisper_wrapper.py runs" || echo "❌ whisper_wrapper.py failed (check Python deps)"
@@ -99,12 +129,60 @@ test: build
 # Development target - runs tests after each build
 dev: clean build test
 
-# Build release version with optimizations
+# Uninstall tools and patterns
+uninstall:
+	@echo "Uninstalling scribe tools..."
+	@if command -v scribe >/dev/null 2>&1; then \
+		scribe uninstall; \
+	else \
+		echo "scribe not found in PATH. Manual cleanup may be required."; \
+	fi
+
+# Create release binaries with complete packages
+release-binaries: build-all
+	@echo "Creating release packages..."
+	@rm -rf releases
+	@mkdir -p releases
+	
+	# Copy support scripts to each platform directory
+	@for platform in macos-amd64 macos-arm64 linux-amd64 linux-arm64; do \
+		cp scripts/whisper_wrapper.py dist/$$platform/; \
+		cp scripts/extract_frames.sh dist/$$platform/; \
+		cp scripts/youtube_helper.py dist/$$platform/; \
+		chmod +x dist/$$platform/whisper_wrapper.py dist/$$platform/extract_frames.sh dist/$$platform/youtube_helper.py; \
+		cp -r patterns dist/$$platform/; \
+		echo "#!/bin/bash" > dist/$$platform/install.sh; \
+		echo "# scribe installation script for $$platform" >> dist/$$platform/install.sh; \
+		echo "mkdir -p ~/.local/bin" >> dist/$$platform/install.sh; \
+		echo "cp scribe whisper_wrapper.py extract_frames.sh youtube_helper.py ~/.local/bin/" >> dist/$$platform/install.sh; \
+		echo "chmod +x ~/.local/bin/whisper_wrapper.py ~/.local/bin/extract_frames.sh ~/.local/bin/youtube_helper.py" >> dist/$$platform/install.sh; \
+		echo "mkdir -p ~/.config/fabric/patterns" >> dist/$$platform/install.sh; \
+		echo "cp -r patterns/* ~/.config/fabric/patterns/" >> dist/$$platform/install.sh; \
+		echo "echo 'Installation complete! Make sure ~/.local/bin is in your PATH'" >> dist/$$platform/install.sh; \
+		echo "echo 'For YouTube support, install yt-dlp: pip install yt-dlp'" >> dist/$$platform/install.sh; \
+		chmod +x dist/$$platform/install.sh; \
+	done
+	
+	# Create platform-specific archives
+	@echo "Creating macOS Intel archive..."
+	@cd dist && tar -czf ../releases/scribe-macos-amd64.tar.gz macos-amd64/
+	
+	@echo "Creating macOS Apple Silicon archive..."
+	@cd dist && tar -czf ../releases/scribe-macos-arm64.tar.gz macos-arm64/
+	
+	@echo "Creating Linux x64 archive (Fedora/Ubuntu)..."
+	@cd dist && tar -czf ../releases/scribe-linux-amd64.tar.gz linux-amd64/
+	
+	@echo "Creating Linux ARM64 archive..."
+	@cd dist && tar -czf ../releases/scribe-linux-arm64.tar.gz linux-arm64/
+	
+	@echo "Release packages created in ./releases/"
+	@ls -la releases/
+
+# Build release version with optimizations (legacy)
 release:
 	@echo "Building release version..."
 	@mkdir -p bin
 	go mod download
-	CGO_ENABLED=0 go build -ldflags "-s -w" -o bin/whisper_transcribe ./cmd/whisper_transcribe
-	CGO_ENABLED=0 go build -ldflags "-s -w" -o bin/video_frames ./cmd/video_frames
-	CGO_ENABLED=0 go build -ldflags "-s -w" -o bin/video_analyze ./cmd/video_analyze
+	CGO_ENABLED=0 go build -ldflags "-s -w" -o bin/scribe ./cmd/scribe
 	@echo "Release build complete."

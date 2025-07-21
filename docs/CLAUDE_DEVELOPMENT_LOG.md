@@ -21,6 +21,38 @@ This document tracks all development work on the screenscribe project by Claude 
 
 ---
 
+## DEVLOG-022: Unified CLI Refactoring - Single 'scribe' Command (2025-01-21)
+
+**Context**: User feedback identified that having three separate applications (`video_analyze`, `whisper_transcribe`, `video_frames`) was cumbersome and not user-friendly. Request was to combine into a single application with subcommands, and rename to the shorter `scribe` command for better usability.
+
+**Changes**:
+- **Unified CLI Architecture**: Refactored three separate Go applications into single `scribe` command with subcommands
+  - `scribe analyze` - Complete video analysis (replaces video_analyze)  
+  - `scribe transcribe` - Whisper transcription only (replaces whisper_transcribe)
+  - `scribe frames` - Frame extraction only (replaces video_frames)
+  - `scribe update` - Self-update from GitHub 
+  - `scribe uninstall` - Remove tools and patterns
+- **Command Naming**: Changed from `screenscribe` to `scribe` for faster typing (40% fewer characters)
+- **Shared Codebase**: Consolidated duplicate code and data structures across all subcommands
+- **Makefile Updates**: Updated build system to create single `scribe` binary instead of three separate tools
+- **Documentation Updates**: Updated README.md and DEVELOPMENT.md to reflect new unified CLI structure
+- **Installation Streamlining**: Now installs one binary (`scribe`) plus backend scripts instead of three binaries
+- **Cross-Compilation**: Updated release targets to build single optimized binary for all platforms
+
+**Validation**:
+- All subcommands tested and working correctly (`scribe analyze`, `scribe transcribe`, `scribe frames`)
+- YouTube integration with yt-dlp functioning properly across all relevant subcommands
+- MLX backend integration working in transcription components
+- Frame extraction with all format options working correctly
+- Self-update and uninstall functionality preserved and working
+- Cross-compilation producing single optimized binaries for macOS (Intel/ARM64) and Linux (AMD64/ARM64)
+- Complete test suite passing with unified CLI structure
+- Example video processing confirmed working with new command structure
+
+**Notes**: This represents a significant UX improvement making screenscribe much more professional and easier to use. The unified CLI provides better discoverability with `scribe --help` showing all available functionality. Users no longer need to remember multiple command names. The refactor maintains 100% feature parity while providing a cleaner, more intuitive interface. The `scribe` name is both shorter and more memorable than the previous tools.
+
+---
+
 ## DEVLOG-021: Complete Project Modernization with Cross-Compilation and Enhanced Documentation (2025-01-21)
 
 **Context**: Major project modernization session including documentation restructure, cross-compilation support, self-update functionality, and MLX backend fixes. Goal was to create a user-focused experience while providing comprehensive developer resources.
