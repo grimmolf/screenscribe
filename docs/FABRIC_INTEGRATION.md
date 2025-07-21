@@ -209,6 +209,9 @@ make install
 
 # Copy patterns to Fabric
 cp -r patterns/* ~/.config/fabric/patterns/
+
+# Set up Fabric AI provider (one-time)
+fabric --setup
 ```
 
 ### Verify Installation

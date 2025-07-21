@@ -18,6 +18,29 @@ This document tracks all development work on the screenscribe project by Claude 
 - What was verified
 
 **Notes**: Additional context, links, or discussion
+
+---
+
+## DEVLOG-015: Documentation Update - Clarify Local Processing Architecture (2025-01-21)
+
+**Context**: After testing the Fabric extension, clarified that screenscribe tools only use local Whisper models and don't need API keys. The AI analysis happens in Fabric, not screenscribe itself. Updated documentation to avoid confusion about API key requirements.
+
+**Changes**:
+- Updated README.md Quick Start to use `fabric --setup` instead of manual API key setup
+- Replaced OpenAI-specific references with generic "AI provider" language
+- Added privacy-first messaging highlighting local video processing
+- Updated Basic Usage section to show clear separation between local extraction and AI analysis
+- Updated troubleshooting section to reference Fabric setup instead of API key issues
+- Updated Fabric Integration documentation with proper setup flow
+- Clarified that screenscribe = local processing, Fabric = AI analysis
+
+**Validation**:
+- Verified all documentation examples use correct `video_analyze` commands
+- Confirmed installation flow points users to `fabric --setup` for AI configuration
+- Tested that documentation now clearly separates local vs cloud processing
+- Reviewed troubleshooting section for accuracy
+
+**Notes**: This clarification makes the user experience much clearer - users get fast local video processing with no API costs, and only pay for AI when they choose to analyze results with Fabric patterns. The architecture is: screenscribe tools (local) → JSON data → Fabric patterns (AI provider).
 ```
 
 ---

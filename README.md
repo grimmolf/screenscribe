@@ -20,14 +20,16 @@
 # 1. Install screenscribe Fabric extension
 cd fabric-extension && make build && make install
 
-# 2. Set your OpenAI API key
-export OPENAI_API_KEY="sk-your-key-here"
+# 2. Set up Fabric with your AI provider (one-time setup)
+fabric --setup
 
 # 3. Process your first video
 video_analyze video.mp4 | fabric -p analyze_video_content
 ```
 
 **That's it!** Your video analysis will be saved as structured notes with transcripts and visual insights.
+
+> 🔒 **Privacy-First**: screenscribe processes videos locally using Whisper and ffmpeg. Only the extracted text and frame data is sent to your chosen AI provider via Fabric for analysis.
 
 ## 🎯 What You Get
 
@@ -70,31 +72,32 @@ From a 30-minute tutorial, you get:
 
 ### Process Any Video
 ```bash
-# Local video files
-screenscribe lecture.mp4
-screenscribe meeting.mov
-screenscribe tutorial.avi
+# Extract video data (local processing only)
+video_analyze lecture.mp4 > video_data.json
 
-# YouTube videos (downloads automatically)
-screenscribe "https://youtube.com/watch?v=..."
+# Analyze with AI (uses your Fabric-configured AI provider)
+video_analyze lecture.mp4 | fabric -p analyze_video_content
 
-# With custom output
-screenscribe video.mp4 --output my-notes/ --format html
+# Trading-specific analysis
+video_analyze trading_webinar.mp4 | fabric -p analyze_trading_video
+
+# Programming tutorial analysis
+video_analyze coding_lesson.mp4 | fabric -p extract_code_from_video
 ```
 
-### Quick Options
+### Processing Options
 ```bash
 # Fast processing (good for previews)
-screenscribe video.mp4 --whisper-model tiny
+video_analyze video.mp4 --whisper-model tiny | fabric -p analyze_video_content
 
-# High quality (best for important content)  
-screenscribe video.mp4 --whisper-model large
+# High quality transcription (best for important content)  
+video_analyze video.mp4 --whisper-model large | fabric -p analyze_video_content
 
-# Apple Silicon GPU acceleration
-screenscribe video.mp4 --whisper-backend mlx
+# Frames-only processing (skip transcription)
+video_analyze video.mp4 --skip-transcript | fabric -p analyze_video_content
 
-# See what backends you have available
-screenscribe --list-backends
+# Custom frame intervals
+video_analyze video.mp4 --frame-interval 30 | fabric -p analyze_video_content
 ```
 
 ## 🧵 Advanced AI Analysis with Fabric
@@ -148,12 +151,13 @@ make build && make install
 cp -r patterns/* ~/.config/fabric/patterns/
 ```
 
-### Set Up API Key
+### Set Up Fabric AI Provider
 ```bash
-export OPENAI_API_KEY="your-api-key-here"
+# Configure Fabric with your preferred AI provider (one-time setup)
+fabric --setup
 
-# Make it permanent
-echo 'export OPENAI_API_KEY="your-key-here"' >> ~/.bashrc
+# This will guide you through setting up your AI provider
+# All API configuration is handled by Fabric, not screenscribe
 ```
 
 ### Verify Installation
@@ -241,7 +245,7 @@ video_analyze video.mp4 --frame-interval 60  # one frame per minute
 - **"video_analyze not found"** → Run `make install` from fabric-extension directory
 - **"FFmpeg not found"** → Install FFmpeg for your operating system
 - **Slow on Apple Silicon** → MLX backend auto-detects and provides 20x speedup
-- **API errors** → Check your `OPENAI_API_KEY` is set correctly
+- **AI analysis errors** → Run `fabric --setup` to configure your AI provider
 - **Out of memory** → Use `--whisper-model tiny` for large videos
 
 **Performance Tips:**
