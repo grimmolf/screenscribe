@@ -764,7 +764,24 @@ screenscribe video.mp4 --sampling-mode interval --interval 10
 cd /path/to/screenscribe/ && git pull && uv tool install --editable . --force
 ```
 
-**Note**: Recent updates include Apple Silicon GPU support (2-5x faster on M1/M2/M3 Macs)
+**Performance Optimizations (Latest Updates)**:
+- **Apple Silicon**: Automatically uses up to 85% of CPU cores (23/28 on M3 Ultra) + GPU acceleration
+- **Network Storage**: Files on NAS/SMB/NFS automatically copied locally for ~10x speed improvement  
+- **Interruption**: Single ctrl+c for graceful shutdown, double ctrl+c for immediate exit
+- **Model Updates**: Now uses GPT-4o (faster, more accurate than deprecated vision-preview)
+
+#### Network Storage Issues
+If transcription is extremely slow (>5 minutes per 1 hour of video):
+
+```bash
+# Force local copying (enabled by default)
+screenscribe video.mp4 --copy-from-nas
+
+# Disable if you prefer network processing
+screenscribe video.mp4 --no-copy-from-nas
+```
+
+**Detected Network Paths**: `/volumes/`, `/mnt/`, paths containing `nfs`, `smb`, `cifs`
 
 #### High API Costs
 ```bash

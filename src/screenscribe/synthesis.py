@@ -89,10 +89,10 @@ Provide response in this JSON format:
         else:
             # Default models for each provider
             model_defaults = {
-                "openai": "gpt-4-vision-preview",
+                "openai": "gpt-4o",
                 "anthropic": "claude-3-sonnet-20240229"
             }
-            primary_model = f"{self.provider}/{model_defaults.get(self.provider, 'gpt-4-vision-preview')}"
+            primary_model = f"{self.provider}/{model_defaults.get(self.provider, 'gpt-4o')}"
         
         if not self.no_fallback:
             # Setup router with fallbacks
@@ -106,7 +106,7 @@ Provide response in this JSON format:
             ]
             
             # Add fallback if different from primary
-            fallback_model = "openai/gpt-4-vision-preview"
+            fallback_model = "openai/gpt-4o"
             if primary_model != fallback_model:
                 model_list.append({
                     "model_name": "fallback",

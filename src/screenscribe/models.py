@@ -101,6 +101,7 @@ class ProcessingOptions(BaseModel):
     thumbnail_width: int = 320
     verbose: bool = False
     prompts_dir: Optional[Path] = None
+    copy_from_nas: bool = True
 
 
 class SynthesisResult(BaseModel):

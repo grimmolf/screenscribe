@@ -157,10 +157,10 @@ async def process_local_file(
         
         # Step 2: Extract and transcribe audio
         console.print("🎵 Extracting audio...")
-        audio_path = await audio_processor.extract_audio(video_path)
+        audio_path = await audio_processor.extract_audio(video_path, copy_from_nas=options.copy_from_nas)
         
         console.print("🎤 Transcribing audio...")
-        transcript_data = audio_processor.transcribe(audio_path)
+        transcript_data = audio_processor.transcribe(audio_path, language=None)
         
         # Save transcript
         transcript_file = output_dir / "transcript.json"
@@ -235,6 +235,7 @@ def main(
     interval: float = typer.Option(5.0, "--interval", help="Interval for interval sampling (seconds)"),
     scene_threshold: float = typer.Option(0.3, "--scene-threshold", help="Scene detection threshold"),
     prompts_dir: Optional[str] = typer.Option(None, "--prompts-dir", help="Custom directory for prompt templates"),
+    copy_from_nas: bool = typer.Option(True, "--copy-from-nas/--no-copy-from-nas", help="Copy files from network storage locally for better performance"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ):
     """Process video/audio to structured notes."""
@@ -259,6 +260,7 @@ def main(
         interval_seconds=interval,
         scene_threshold=scene_threshold,
         prompts_dir=Path(prompts_dir) if prompts_dir else None,
+        copy_from_nas=copy_from_nas,
         verbose=verbose
     )
     

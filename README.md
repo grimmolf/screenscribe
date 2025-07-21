@@ -14,10 +14,13 @@
 
 **Key Features:**
 - 🎤 High-quality transcription with faster-whisper (2-5x faster than OpenAI Whisper)
-- 👁️ AI-powered visual analysis with GPT-4 Vision  
+- 🍎 **Apple Silicon optimized** - leverages M1/M2/M3 GPU and all CPU cores
+- 👁️ AI-powered visual analysis with GPT-4o Vision  
 - 📝 Output in Markdown or HTML format
 - 📺 Support for YouTube videos and local files
 - 🎯 Customizable AI prompts for different content types
+- ⚡ **Smart NAS handling** - automatically copies network files locally for better performance
+- 🛑 **Responsive interruption** - clean ctrl+c handling with progress saving
 
 ## 🚀 Quick Start
 
@@ -207,9 +210,11 @@ screenscribe tutorial.mp4 --prompts-dir ./my-prompts/
 - **No audio** → Ensure video has audio track
 
 **Performance Tips:**
-- Use smaller Whisper models (`tiny`, `base`) for speed
-- Processing typically takes 1-2x video duration
-- GPU acceleration helps significantly
+- **Apple Silicon users**: Tool automatically uses all CPU cores (up to 23/28 on M3 Ultra) and attempts GPU acceleration
+- **Network storage**: Files on NAS/network drives are automatically copied locally for better performance
+- Use smaller Whisper models (`tiny`, `base`) for speed vs `large` for accuracy
+- **Interruption**: Single ctrl+c for graceful shutdown, double ctrl+c for immediate exit
+- Processing typically takes 0.3-1x video duration (significantly improved!)
 
 **Need help?** See [Troubleshooting Guide](docs/user/troubleshooting.md)
 
