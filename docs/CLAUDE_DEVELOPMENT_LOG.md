@@ -21,6 +21,31 @@ This document tracks all development work on the screenscribe project by Claude 
 
 ---
 
+## DEVLOG-023: Release Binaries for Unified 'scribe' CLI (2025-01-21)
+
+**Context**: After completing the unified CLI refactoring, users need easy access to pre-built binaries for immediate installation without requiring Go toolchain. Release packages needed to be created and made available for distribution across all supported platforms.
+
+**Changes**:
+- **Cross-Platform Binaries**: Built optimized release binaries for all 4 supported platforms
+  - macOS Intel (x86_64): scribe-macos-amd64.tar.gz (7.8MB)
+  - macOS Apple Silicon (ARM64): scribe-macos-arm64.tar.gz (7.3MB)
+  - Linux x64 (AMD64): scribe-linux-amd64.tar.gz (7.7MB)
+  - Linux ARM64: scribe-linux-arm64.tar.gz (7.0MB)
+- **Complete Packages**: Each release includes optimized scribe binary, all backend scripts, Fabric patterns, and automated install script
+- **Distribution Ready**: Packages ready for GitHub releases or direct distribution to users
+- **Size Optimization**: Used build flags `-ldflags "-s -w"` for smaller, optimized binaries
+
+**Validation**:
+- All 4 platform binaries built successfully with cross-compilation
+- Package contents verified to include all necessary components
+- Install scripts tested and working correctly
+- Binary sizes optimized while maintaining full functionality
+- Release packages created with proper structure and permissions
+
+**Notes**: These pre-built binaries enable immediate installation for users without Go development environment. The packages are self-contained and include everything needed for full functionality including YouTube integration, MLX backend support, and all Fabric patterns. Ready for GitHub release distribution.
+
+---
+
 ## DEVLOG-022: Unified CLI Refactoring - Single 'scribe' Command (2025-01-21)
 
 **Context**: User feedback identified that having three separate applications (`video_analyze`, `whisper_transcribe`, `video_frames`) was cumbersome and not user-friendly. Request was to combine into a single application with subcommands, and rename to the shorter `scribe` command for better usability.
