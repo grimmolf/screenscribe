@@ -7,11 +7,20 @@ import tempfile
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 import logging
 from typing import Dict, Any, Optional, List, Tuple
-import torch
 
 from .config import config
 
 logger = logging.getLogger(__name__)
+
+
+def _cuda_is_available() -> bool:
+    """Check if CUDA is available without importing torch."""
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        # If torch isn't available, assume CUDA isn't either
+        return False
 
 
 class AudioProcessor:
@@ -20,7 +29,7 @@ class AudioProcessor:
     def __init__(self, model_name: str = "medium"):
         self.model_name = model_name
         # faster-whisper uses different device specification
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if _cuda_is_available() else "cpu"
         self.compute_type = "float16" if self.device == "cuda" else "int8"
         self.model: Optional[WhisperModel] = None
         

@@ -341,3 +341,36 @@ This document tracks all development work on the screenscribe project by Claude 
 - Technical documentation maintains accuracy for developers
 - Performance improvements are clearly communicated throughout user-facing content
 - Sets proper expectations for the enhanced user experience
+
+---
+
+## DEVLOG-010: Fix torch Import Dependency Error (2025-01-21)
+
+**Context**: User encountered `ModuleNotFoundError: No module named 'torch'` when attempting to run screenscribe after successful installation. Root cause analysis revealed leftover direct torch import in audio.py from the openai-whisper migration that was no longer needed.
+
+**Changes**:
+- **Removed Direct torch Import**: Eliminated `import torch` from top-level imports in audio.py
+- **Created CUDA Detection Helper**: Added `_cuda_is_available()` function with graceful torch import fallback
+- **Maintained GPU Detection**: Preserved CUDA detection capability without hard torch dependency
+- **Graceful Fallback Logic**: If torch is not available, defaults to CPU processing without errors
+
+**Validation**:
+- Rebuilt package with `uv build` 
+- Reinstalled with `uv tool install --editable . --force`
+- Verified `screenscribe --help` command works without import errors
+- Confirmed graceful handling when torch is not available
+- Maintained existing GPU detection functionality when torch is present
+
+**Benefits**:
+- **✅ Resolves Runtime Error**: Eliminates import error preventing screenscribe execution
+- **✅ Cleaner Dependencies**: Removes unnecessary direct torch dependency
+- **✅ Maintains GPU Support**: Preserves CUDA detection when torch is available
+- **✅ Graceful Degradation**: Automatically falls back to CPU when torch is not installed
+- **✅ Better User Experience**: Tool works out-of-the-box without additional torch installation
+
+**Notes**:
+- This was a critical runtime issue preventing any usage of the tool
+- faster-whisper manages PyTorch dependencies internally, no direct import needed
+- The fix maintains all existing functionality while removing the dependency conflict
+- Users can now run screenscribe immediately after installation without additional setup
+- Sets foundation for cleaner dependency management going forward
