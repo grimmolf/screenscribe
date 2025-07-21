@@ -170,4 +170,4 @@ class ProcessingResult(BaseModel):
 
     def save(self, path: Path):
         """Save processing result as JSON"""
-        path.write_text(self.json(indent=2))
+        path.write_text(self.model_dump_json(indent=2))

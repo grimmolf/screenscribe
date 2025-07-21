@@ -12,9 +12,9 @@ This guide covers common issues and their solutions when using screenscribe.
 
 **Solutions**:
 
-1. **Install Apple Silicon dependencies**:
+1. **Install Apple Silicon dependencies (CRITICAL)**:
    ```bash
-   # For development installation
+   # For development installation - ALWAYS use [apple] for GPU acceleration
    uv tool install --editable './[apple]' --force
    
    # For package installation (when released)
@@ -39,11 +39,11 @@ This guide covers common issues and their solutions when using screenscribe.
 **Diagnosis**:
 ```bash
 # Check which backend is being used
-screenscribe --list-backends test.mp4
+screenscribe --list-backends
 
 # Look for:
-# ✅ mlx: gpu (float16)    ← Should be available on Apple Silicon
-# ✅ faster-whisper: cpu   ← CPU fallback
+# ✅ mlx: gpu (float16)         ← Should be available on Apple Silicon
+# ✅ faster-whisper: cpu (int8)  ← CPU fallback
 ```
 
 **Solutions**:
@@ -53,7 +53,11 @@ screenscribe --list-backends test.mp4
    # Force MLX backend
    screenscribe video.mp4 --whisper-backend mlx
    
-   # Expected performance: 49min video in ~24 seconds
+   # Expected performance: 49min video in ~103 seconds (1.7 minutes)
+   
+   # If MLX backend shows as unavailable, reinstall with Apple dependencies:
+   cd /path/to/screenscribe/
+   uv tool install --editable './[apple]' --force
    ```
 
 2. **Choose appropriate model size**:

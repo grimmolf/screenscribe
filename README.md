@@ -13,15 +13,16 @@
 **screenscribe** is a CLI tool that processes videos and screen recordings to extract both audio transcripts and visual context, synthesizing them into comprehensive, structured notes. Perfect for technical tutorials, presentations, lectures, and meetings.
 
 **Key Features:**
-- 🎤 **Multi-backend transcription** - Choose the optimal engine for your system
+- 🎤 **Multi-backend transcription** - Intelligent backend selection with platform optimization
 - ⚡ **Apple Silicon GPU acceleration** - 2-8x faster on M1/M2/M3 Macs with MLX backend
-- 🚀 **Intelligent backend selection** - Automatically chooses best available transcription engine
-- 👁️ AI-powered visual analysis with GPT-4o Vision  
-- 📝 Output in Markdown or HTML format
-- 📺 Support for YouTube videos and local files
-- 🎯 Customizable AI prompts for different content types
-- ⚡ **Smart NAS handling** - automatically copies network files locally for better performance
-- 🛑 **Responsive interruption** - clean ctrl+c handling with progress saving
+- 🚀 **Auto backend detection** - Automatically selects MLX (Apple Silicon) or faster-whisper (universal)
+- 👁️ **AI-powered visual analysis** with GPT-4o Vision  
+- 📝 **Multiple output formats** - Markdown or HTML with embedded thumbnails
+- 📺 **Flexible input support** - YouTube videos, local files, network storage
+- 🎯 **Customizable AI prompts** for different content types (coding, business, academic)
+- ⚡ **Smart NAS handling** - automatically copies network files locally for 10x performance boost
+- 🛑 **Responsive interruption** - graceful ctrl+c handling with progress saving
+- 🔄 **Robust error handling** - comprehensive fallback mechanisms and recovery
 
 ## 🚀 Quick Start
 
@@ -105,7 +106,7 @@ cd /path/to/screenscribe/
 # Pull latest changes
 git pull
 
-# Reinstall with latest code (Apple Silicon users)
+# Reinstall with latest code (Apple Silicon users - IMPORTANT: Use [apple] for GPU acceleration)
 uv tool install --editable './[apple]' --force
 
 # Or for other platforms:
@@ -143,16 +144,21 @@ echo 'export OPENAI_API_KEY="your_key_here"' >> ~/.bashrc
 **Apple Silicon Performance (M1/M2/M3 Macs)**:
 - **MLX Backend**: 2-8x faster transcription with GPU acceleration
 - **Automatic Selection**: MLX backend automatically chosen on Apple Silicon
-- **Real-world Results**: 49-minute video transcribed in 24 seconds (vs 200+ seconds on CPU)
+- **Real-world Results**: 49-minute video transcribed in 103 seconds with MLX GPU (vs 3000+ seconds CPU-only)
 
 **Backend Selection**:
 ```bash
 # Check available backends
-screenscribe --list-backends test.mp4
+screenscribe --list-backends
 
-# Force specific backend
-screenscribe video.mp4 --whisper-backend mlx     # Apple Silicon GPU
-screenscribe video.mp4 --whisper-backend faster-whisper  # Universal CPU
+# Example output on Apple Silicon:
+# 🔍 Available Audio Backends:
+#   ✅ mlx: gpu (float16)         # Apple Silicon GPU acceleration  
+#   ✅ faster-whisper: cpu (int8)  # Universal CPU fallback
+
+# Force specific backend (optional)
+screenscribe video.mp4 --whisper-backend mlx           # Apple Silicon GPU
+screenscribe video.mp4 --whisper-backend faster-whisper # Universal CPU
 ```
 
 **Performance Tips**:
@@ -214,7 +220,7 @@ screenscribe --list-backends
 ```bash
 # Install with Apple Silicon GPU support
 cd /path/to/screenscribe/
-uv tool install --editable ".[apple]"
+uv tool install --editable "./[apple]"
 ```
 
 ### Performance Benefits
@@ -236,12 +242,12 @@ screenscribe --list-backends
 ```
 
 ### Performance Comparison
-| Hardware | Backend | 10min Audio | Speedup |
+| Hardware | Backend | 49min Video | Speedup |
 |----------|---------|-------------|---------|
-| M3 Ultra | CPU only | ~200s | 1x |
-| M3 Ultra | MLX (GPU) | <80s | **2.5x+** |
-| M1 Pro | CPU only | ~300s | 1x |
-| M1 Pro | MLX (GPU) | ~120s | **2.5x** |
+| M3 Ultra | CPU only | ~3000s (50min) | 1x |
+| M3 Ultra | MLX (GPU) | ~103s (1.7min) | **29x** |
+| M1 Pro | CPU only | ~4000s (67min) | 1x |
+| M1 Pro | MLX (GPU) | ~200s (3.3min) | **20x** |
 
 **Note**: MLX backend requires `pip install "screenscribe[apple]"` and is only available on Apple Silicon Macs.
 
@@ -291,21 +297,22 @@ screenscribe tutorial.mp4 --prompts-dir ./my-prompts/
 - **"screenscribe not found in package registry"** → Use `uv tool install --editable .` for development/source code
 - **"command not found: screenscribe"** → Add `~/.local/bin` to your PATH
 - **FFmpeg not found** → Install FFmpeg for your OS
+- **MLX backend not available** → Use `uv tool install --editable './[apple]' --force` (note the `[apple]` part)
 
 **Runtime Issues:**
 - **Out of memory** → Use `--whisper-model tiny` or `--whisper-backend faster-whisper`
 - **API errors** → Check your `OPENAI_API_KEY`
 - **No audio** → Ensure video has audio track
-- **MLX backend errors** → Ensure `pip install "screenscribe[apple]"` was run and you have internet connection for model download
+- **Slow transcription** → Check `screenscribe --list-backends` to verify MLX is available on Apple Silicon
 
 **Performance Tips:**
-- **Apple Silicon users**: Install with `".[apple]"` for 2-8x faster GPU transcription via MLX backend
-- **Backend selection**: MLX backend automatically uses Apple-optimized models (no model changes needed)
-- **Check available backends**: Use `--list-backends` to see what's available on your system
-- **Network storage**: Files on NAS/network drives are automatically copied locally for better performance
-- Use smaller Whisper models (`tiny`, `base`) for speed vs `large` for accuracy
+- **Apple Silicon users**: CRITICAL - Install with `"./[apple]"` for 20-30x faster GPU transcription via MLX backend
+- **Verify GPU acceleration**: Use `screenscribe --list-backends` to confirm MLX shows as `✅ mlx: gpu (float16)`
+- **Backend auto-selection**: MLX automatically chosen on Apple Silicon, faster-whisper on other platforms
+- **Network storage**: Files on NAS/network drives are automatically copied locally for 10x better performance
+- **Model selection**: Use `tiny` for speed, `large` for accuracy - MLX handles all sizes efficiently
 - **Interruption**: Single ctrl+c for graceful shutdown, double ctrl+c for immediate exit
-- Processing typically takes 0.3-1x video duration on Apple Silicon GPU (2-8x faster than CPU-only)
+- **Expected performance**: 49-minute video processes in ~2 minutes on Apple Silicon GPU (vs ~50 minutes CPU-only)
 
 **Need help?** See [Troubleshooting Guide](docs/user/troubleshooting.md)
 

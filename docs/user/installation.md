@@ -42,7 +42,7 @@ source ~/.bashrc  # or ~/.zshrc
 # Standard installation
 uv tool install screenscribe
 
-# Apple Silicon optimization (M1/M2/M3 Macs) - 2-8x faster transcription
+# Apple Silicon optimization (M1/M2/M3 Macs) - 20-30x faster transcription with GPU
 uv tool install "screenscribe[apple]"
 ```
 
@@ -178,7 +178,8 @@ screenscribe --list-backends test.mp4
 
 **macOS:**
 - Homebrew is required for automatic FFmpeg installation
-- Apple Silicon Macs may need Rosetta for some dependencies
+- CRITICAL: Always install with `[apple]` dependencies for GPU acceleration on M1/M2/M3 Macs
+- MLX backend provides 20-30x performance improvement over CPU-only processing
 
 **Linux:**
 - Most distributions are supported

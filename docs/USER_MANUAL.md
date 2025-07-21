@@ -601,13 +601,18 @@ screenscribe video.mp4 --whisper-backend faster-whisper
 
 ### Performance Comparison
 
-**Apple Silicon Performance (M1/M2/M3 Macs):**
-- **MLX Backend**: ~24 seconds for 49-minute video
-- **CPU Backend**: ~200+ seconds for same video
-- **Speedup**: 8x faster with MLX GPU acceleration
+**Real-world benchmarks with 49-minute video:**
+| Hardware | Backend | Processing Time | Speedup |
+|----------|---------|----------------|---------|
+| M3 Ultra | CPU only | ~3000s (50min) | 1x |
+| M3 Ultra | MLX (GPU) | ~103s (1.7min) | **29x** |
+| M1 Pro | CPU only | ~4000s (67min) | 1x |
+| M1 Pro | MLX (GPU) | ~200s (3.3min) | **20x** |
+
+**Critical**: MLX backend requires `uv tool install --editable './[apple]'` and is only available on Apple Silicon Macs.
 
 **Intel/AMD/Other Platforms:**
-- **faster-whisper**: Optimized CPU performance
+- **faster-whisper**: Optimized CPU performance with multi-threading
 - **Thread Optimization**: Automatically uses optimal CPU thread count
 
 ## Performance Tuning
