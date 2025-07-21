@@ -2,6 +2,8 @@
 
 This guide covers common issues and their solutions when using screenscribe.
 
+> 📖 **For comprehensive guidance**, see the **[User Manual](../USER_MANUAL.md)** which includes complete usage, optimization, prompt customization, and troubleshooting guidance.
+
 ## Installation Issues
 
 ### Command Not Found: screenscribe

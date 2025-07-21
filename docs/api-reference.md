@@ -2,6 +2,10 @@
 
 This document provides a comprehensive reference for screenscribe's internal modules and APIs. This is primarily useful for developers who want to contribute to the project or integrate screenscribe into other applications.
 
+> 📖 **For user documentation**, see the **[User Manual](USER_MANUAL.md)** which provides complete usage guidance, prompt customization, and troubleshooting.
+> 
+> 👨‍💻 **For development context**, see the **[Development Guide](DEVELOPMENT.md)** which explains the WHY → HOW → WHAT narrative and architecture decisions.
+
 ## Module Architecture
 
 screenscribe follows a modular architecture with clear separation of concerns:

@@ -2,6 +2,8 @@
 
 This guide covers all methods to install screenscribe on your system.
 
+> 📖 **For comprehensive usage guidance**, see the **[User Manual](../USER_MANUAL.md)** which includes installation, usage, prompt customization, optimization, and troubleshooting.
+
 ## Quick Installation (Recommended)
 
 ### One-Command Install
@@ -181,6 +183,7 @@ screenscribe --help
 ## Next Steps
 
 Once installed, check out:
-- [Usage Guide](usage.md) - Learn basic commands
-- [Configuration](configuration.md) - Customize your setup
-- [Examples](../examples/) - See screenscribe in action
+- **[📖 Complete User Manual](../USER_MANUAL.md)** - Everything you need to know about using screenscribe
+- **[Usage Guide](usage.md)** - Basic commands and examples
+- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
+- **[Real-World Examples](../examples/real-world-examples.md)** - See screenscribe in action

@@ -183,3 +183,47 @@ This document tracks all development work on the screenscribe project by Claude 
 - Troubleshooting guide addresses all common failure modes
 - Prompt customization unlocks advanced use cases for power users
 - Documentation supports both casual users and advanced customization needs
+
+---
+
+## DEVLOG-006: Documentation Restructure with User-Focused README and Comprehensive User Manual (2025-01-21)
+
+**Context**: Restructured documentation based on user feedback that it "wasn't quite right." User requested: (1) README should point developers to DEVELOPMENT.md, (2) README should show install/uninstall/basic usage for end-users, (3) need better user documentation with prompt guidance, (4) follow WHY → HOW → WHAT narrative structure.
+
+**Changes**:
+- **README Restructure**: Streamlined from 270 to 178 lines, focused entirely on end-users
+  - Added explicit uninstall instructions as requested
+  - Removed all developer content (moved to DEVELOPMENT.md)
+  - Simplified to: install, uninstall, basic usage, quick troubleshooting
+- **Comprehensive User Manual**: Created `docs/USER_MANUAL.md` consolidating all user guidance
+  - Complete installation, usage, and optimization guidance
+  - **Extensive prompt customization section** with domain-specific examples
+  - Content type optimization (programming, business, academic)
+  - Performance tuning and integration examples
+  - Comprehensive troubleshooting consolidated from multiple sources
+- **Developer Documentation**: Created `docs/DEVELOPMENT.md` with WHY → HOW → WHAT structure
+  - WHY: References PRD for problem context
+  - HOW: References PRP for implementation approach  
+  - WHAT: References Development Log for actual work
+  - Complete architecture deep dive and contribution guidelines
+- **Cross-Reference Updates**: Updated all user documentation files to properly reference
+  - User Manual as primary comprehensive resource
+  - Proper navigation between related documents
+  - Clear separation of user vs developer resources
+
+**Validation**:
+- All markdown files compile and render correctly
+- Cross-references verified to point to correct documents
+- Documentation hierarchy follows requested structure exactly
+- User Manual provides comprehensive prompt guidance as specifically requested
+- README now focused on end-user needs with install/uninstall/basic usage
+- DEVELOPMENT.md properly implements WHY → HOW → WHAT narrative
+- All user guides properly cross-reference the comprehensive User Manual
+
+**Notes**: 
+- Successfully addressed all specific user feedback points
+- README is now truly user-focused rather than mixed user/developer content
+- User Manual provides the comprehensive prompt guidance that was specifically requested
+- Documentation structure now follows logical progression: README → User Manual → Developer Guide
+- Clear separation allows users and developers to find relevant information quickly
+- Significantly reduced cognitive load for new users while maintaining comprehensive resources

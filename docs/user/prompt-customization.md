@@ -2,6 +2,8 @@
 
 screenscribe uses Large Language Models (LLMs) to analyze video frames and synthesize content. You can customize these prompts to get better results for your specific content type.
 
+> 📖 **For a complete guide** including usage, optimization, and integration, see the **[User Manual](../USER_MANUAL.md)** which consolidates all user guidance.
+
 ## Understanding Prompts
 
 ### What are Prompts?
@@ -328,6 +330,7 @@ Evaluate your prompts based on:
 
 ## Next Steps
 
-- [Usage Guide](usage.md) - Learn more about screenscribe options
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions
-- [Examples](../examples/) - See prompt customization in action
+- **[📖 Complete User Manual](../USER_MANUAL.md)** - Comprehensive guide with usage, optimization, and integration examples
+- **[Usage Guide](usage.md)** - Learn more about screenscribe options
+- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions  
+- **[Real-World Examples](../examples/real-world-examples.md)** - See prompt customization in action

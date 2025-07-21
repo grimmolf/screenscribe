@@ -2,6 +2,8 @@
 
 This guide covers everything you need to know about using screenscribe effectively.
 
+> 📖 **For the complete user experience**, see the **[User Manual](../USER_MANUAL.md)** which consolidates all user guidance, including advanced prompt customization, content optimization, and integration examples.
+
 ## Basic Usage
 
 ### Processing a Local Video
@@ -307,6 +309,7 @@ with open('screenscribe_output/notes.md', 'r') as f:
 
 ## Next Steps
 
-- [Prompt Customization](prompt-customization.md) - Customize LLM behavior
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions  
-- [Examples](../examples/) - Real-world usage examples
+- **[📖 Complete User Manual](../USER_MANUAL.md)** - Comprehensive guide with prompt customization, optimization, and integration examples
+- **[Prompt Customization](prompt-customization.md)** - Detailed prompt engineering guide
+- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions  
+- **[Real-World Examples](../examples/real-world-examples.md)** - See screenscribe in action
