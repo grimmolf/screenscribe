@@ -105,6 +105,34 @@ echo 'export OPENAI_API_KEY="sk-your-key-here"' >> ~/.bashrc
 export ANTHROPIC_API_KEY="sk-ant-your-key-here"
 ```
 
+### Update
+
+**For development/source code users:**
+```bash
+# Navigate to screenscribe directory
+cd /path/to/screenscribe/
+
+# Pull latest changes
+git pull origin main
+
+# Reinstall with latest code
+uv tool install --editable . --force
+```
+
+**For release users (when published):**
+```bash
+# Update to latest version
+uv tool upgrade screenscribe
+
+# Verify updated version
+screenscribe --version  # (when version command is added)
+```
+
+**Check for Updates:**
+- Watch the GitHub repository for releases
+- Subscribe to release notifications
+- Check the development log for latest features
+
 ### Uninstall
 
 ```bash
@@ -732,9 +760,11 @@ screenscribe video.mp4 --whisper-model base
 # Reduce frame extraction
 screenscribe video.mp4 --sampling-mode interval --interval 10
 
-# Enable GPU acceleration (if available)
-# Ensure CUDA is properly installed
+# Update to latest version for performance improvements
+cd /path/to/screenscribe/ && git pull && uv tool install --editable . --force
 ```
+
+**Note**: Recent updates include Apple Silicon GPU support (2-5x faster on M1/M2/M3 Macs)
 
 #### High API Costs
 ```bash

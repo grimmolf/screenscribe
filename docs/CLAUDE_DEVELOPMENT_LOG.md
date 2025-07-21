@@ -410,3 +410,45 @@ This document tracks all development work on the screenscribe project by Claude 
 - The enhancement maintains full compatibility with existing NVIDIA and CPU configurations
 - Users will see immediate performance improvements without any configuration changes
 - Sets foundation for optimal performance across all major development platforms
+
+---
+
+## DEVLOG-012: Add Clear Update Instructions to Documentation (2025-01-21)
+
+**Context**: User inquiry about update instructions revealed a significant gap in documentation. Neither README nor User Manual provided clear guidance on how users should update their screenscribe installation to get latest features, bug fixes, and performance improvements (like the recent Apple Silicon GPU support).
+
+**Changes**:
+- **README Updates**:
+  - Added new "Update" section between installation and uninstall
+  - Clear instructions for development users: `git pull && uv tool install --editable . --force`
+  - Future-proofed instructions for release users: `uv tool upgrade screenscribe`
+  - Positioned appropriately in installation workflow
+- **User Manual Updates**:
+  - Comprehensive update section with detailed steps for both user types
+  - Added verification steps and version checking guidance
+  - Included guidance on monitoring GitHub repository for updates
+  - Enhanced performance troubleshooting with update recommendations
+  - Added note about recent Apple Silicon GPU improvements
+- **Troubleshooting Integration**:
+  - Added update suggestion to slow processing troubleshooting
+  - Connected performance issues to potential outdated versions
+
+**Validation**:
+- Reviewed both development and release update workflows for accuracy
+- Verified command syntax for both git and uv operations
+- Ensured consistency between README and User Manual instructions
+- Positioned update instructions logically in documentation flow
+
+**Benefits**:
+- **✅ Clear User Guidance**: Users now have step-by-step update instructions
+- **✅ Reduced Support Load**: Proactive guidance reduces update-related questions
+- **✅ Better Feature Adoption**: Users can easily access latest improvements
+- **✅ Future-Proofed**: Ready for both current development and future release workflows
+- **✅ Performance Awareness**: Users know updates can improve performance
+
+**Notes**:
+- This addresses a fundamental user experience gap in keeping software current
+- Particularly important given recent significant improvements (Apple Silicon support, faster-whisper migration)
+- Sets expectation that users should regularly update for optimal experience
+- Provides clear distinction between development vs published release update paths
+- Enhances overall user experience by making updates accessible and routine

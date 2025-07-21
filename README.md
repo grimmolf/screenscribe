@@ -77,6 +77,26 @@ uv tool install --editable .
 - Changes to code reflect immediately without reinstall
 - Perfect for development and testing
 
+### Update
+
+**For development/source code users:**
+```bash
+# Navigate to screenscribe directory
+cd /path/to/screenscribe/
+
+# Pull latest changes
+git pull
+
+# Reinstall with latest code
+uv tool install --editable . --force
+```
+
+**For release users (when published):**
+```bash
+# Update to latest version
+uv tool upgrade screenscribe
+```
+
 ### Uninstall
 
 ```bash
