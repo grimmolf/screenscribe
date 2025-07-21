@@ -12,17 +12,23 @@
 
 **screenscribe** is a CLI tool that processes videos and screen recordings to extract both audio transcripts and visual context, synthesizing them into comprehensive, structured notes. Perfect for technical tutorials, presentations, lectures, and meetings.
 
+> 🧵 **New**: screenscribe now includes [Fabric integration](./fabric-extension/) for AI-powered video analysis patterns. Thanks to the amazing [Fabric project](https://github.com/danielmiessler/fabric) by Daniel Miessler for providing the pattern framework that makes advanced video analysis workflows possible.
+
 **Key Features:**
 - 🎤 **Multi-backend transcription** - Intelligent backend selection with platform optimization
 - ⚡ **Apple Silicon GPU acceleration** - 2-8x faster on M1/M2/M3 Macs with MLX backend
 - 🚀 **Auto backend detection** - Automatically selects MLX (Apple Silicon) or faster-whisper (universal)
 - 👁️ **AI-powered visual analysis** with GPT-4o Vision  
 - 📝 **Multiple output formats** - Markdown or HTML with embedded thumbnails
-- 📺 **Flexible input support** - YouTube videos, local files, network storage
-- 🎯 **Customizable AI prompts** for different content types (coding, business, academic)
+- 🧵 **Fabric AI integration** - Use with [Fabric patterns](https://github.com/danielmiessler/fabric) for advanced workflows
+- 📺 **Enhanced YouTube support** - Direct transcript extraction with Whisper fallback
+- 📄 **External transcript support** - Use existing transcripts (JSON, SRT, VTT, plain text)
+- 🔧 **Global configuration system** - Centralized settings at ~/.config/screenscribe/
+- 🔄 **Self-update capability** - Update directly from GitHub
+- 🎯 **Customizable AI prompts** - Global prompt directory with easy customization
 - ⚡ **Smart NAS handling** - automatically copies network files locally for 10x performance boost
 - 🛑 **Responsive interruption** - graceful ctrl+c handling with progress saving
-- 🔄 **Robust error handling** - comprehensive fallback mechanisms and recovery
+- 🔗 **Multi-command CLI** - config, update, and processing sub-commands
 
 ## 🚀 Quick Start
 
@@ -251,6 +257,97 @@ screenscribe --list-backends
 
 **Note**: MLX backend requires `pip install "screenscribe[apple]"` and is only available on Apple Silicon Macs.
 
+## ⚙️ Configuration & Advanced Features
+
+### Global Configuration System
+
+screenscribe now features a comprehensive configuration system with global settings:
+
+```bash
+# Initialize configuration (creates ~/.config/screenscribe/)
+screenscribe config init
+
+# Show current configuration
+screenscribe config show
+
+# Validate configuration
+screenscribe config validate
+```
+
+The global configuration includes:
+- **API endpoints and keys** - Configure multiple LLM providers
+- **Global prompts directory** - Customize AI analysis prompts globally
+- **Processing defaults** - Set preferred sampling modes, models, and backends
+- **YouTube settings** - Control transcript extraction behavior
+- **Update settings** - Auto-update preferences
+
+### Enhanced YouTube Support
+
+Extract transcripts directly from YouTube when available, with Whisper fallback:
+
+```bash
+# Use YouTube's built-in transcripts (default behavior)
+screenscribe "https://youtube.com/watch?v=..." --use-youtube-transcripts
+
+# Force Whisper transcription (skip YouTube transcripts)  
+screenscribe "https://youtube.com/watch?v=..." --no-youtube-transcripts
+
+# Use external transcript file with any video
+screenscribe video.mp4 --transcript-file transcript.srt
+screenscribe "https://youtube.com/watch?v=..." --transcript-file custom.json
+```
+
+**Supported transcript formats:**
+- **JSON** - screenscribe native format with timing
+- **SRT** - Standard subtitle format 
+- **VTT** - WebVTT subtitle format
+- **Plain text** - Raw text without timing
+
+### Self-Update System
+
+Keep screenscribe up-to-date automatically:
+
+```bash
+# Check for updates
+screenscribe update check
+
+# Install latest stable release
+screenscribe update install
+
+# Install latest development version
+screenscribe update install --dev
+
+# Manual update (development users)
+git pull && uv tool install --editable './[apple]' --force
+```
+
+### Global Prompts Directory
+
+Customize AI analysis globally at `~/.config/screenscribe/prompts/`:
+
+```bash
+# Initialize creates default prompts
+screenscribe config init
+
+# Use global prompts (default)
+screenscribe video.mp4
+
+# Use custom prompts directory
+screenscribe video.mp4 --prompts-dir ./my-custom-prompts/
+
+# Edit global prompts
+code ~/.config/screenscribe/prompts/synthesis.md
+```
+
+### Multi-Command CLI
+
+screenscribe now features a professional multi-command structure:
+
+- `screenscribe [video]` - Process video (default command)
+- `screenscribe config` - Configuration management
+- `screenscribe update` - Update management
+- `screenscribe --list-backends` - List available backends
+
 ## 📋 Output
 
 screenscribe generates:
@@ -261,15 +358,27 @@ screenscribe generates:
 
 ## 🎯 Customizing AI Analysis
 
-You can customize how screenscribe analyzes your content by editing prompt templates:
+screenscribe provides powerful prompt customization through the global configuration system:
 
 ```bash
-# Use custom prompts for technical content
+# Initialize global prompts directory (first time only)
+screenscribe config init
+
+# Edit global prompts (applies to all processing)
+code ~/.config/screenscribe/prompts/synthesis.md
+code ~/.config/screenscribe/prompts/trading.md  # Specialized for financial content
+
+# Use project-specific prompts
 screenscribe tutorial.mp4 --prompts-dir ./my-prompts/
 
-# Prompts are stored as editable markdown files
-# See prompts/ directory for examples
+# Show current configuration including prompts directory
+screenscribe config show
 ```
+
+**Global vs Local Prompts:**
+- **Global prompts** (`~/.config/screenscribe/prompts/`) - Applied to all videos automatically
+- **Local prompts** (`--prompts-dir`) - Override global prompts for specific projects
+- **Built-in prompts** - Default fallback if no custom prompts found
 
 ## 📚 Documentation
 
@@ -315,6 +424,48 @@ screenscribe tutorial.mp4 --prompts-dir ./my-prompts/
 - **Expected performance**: 49-minute video processes in ~2 minutes on Apple Silicon GPU (vs ~50 minutes CPU-only)
 
 **Need help?** See [Troubleshooting Guide](docs/user/troubleshooting.md)
+
+## 🧵 Fabric Integration
+
+screenscribe includes comprehensive [Fabric](https://github.com/danielmiessler/fabric) integration for advanced AI-powered video analysis workflows:
+
+### Quick Fabric Setup
+```bash
+# Install Fabric (if not already installed)
+go install github.com/danielmiessler/fabric@latest
+
+# Build screenscribe Fabric extension
+cd fabric-extension && make build && make install
+
+# Copy patterns to Fabric
+cp -r patterns/* ~/.config/fabric/patterns/
+```
+
+### Fabric Usage Examples
+```bash
+# Basic video analysis with Fabric
+video_analyze tutorial.mp4 | fabric -p analyze_video_content
+
+# Trading-specific analysis
+video_analyze trading_webinar.mp4 | fabric -p analyze_trading_video
+
+# Extract code from programming tutorials
+video_analyze coding_tutorial.mp4 | fabric -p extract_code_from_video
+
+# Chain multiple Fabric patterns
+video_analyze presentation.mp4 | \
+  fabric -p analyze_video_content | \
+  fabric -p extract_key_points | \
+  fabric -p create_blog_post
+```
+
+### Available Fabric Patterns
+- **General**: `analyze_video_content`, `extract_code_from_video`
+- **Trading**: `analyze_trading_video`, `extract_technical_analysis`, `extract_trading_strategy`, `analyze_market_commentary`
+
+**Learn more**: See [Fabric Extension Documentation](./fabric-extension/README.md)
+
+Special thanks to [Daniel Miessler](https://github.com/danielmiessler) and the [Fabric project](https://github.com/danielmiessler/fabric) for creating the powerful AI pattern framework that enables advanced video analysis workflows.
 
 ## 📄 License
 
