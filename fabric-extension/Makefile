@@ -19,31 +19,45 @@ help:
 	@echo "  help      - Show this help message"
 	@echo ""
 
+# Version information
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE ?= $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+
+# Build flags
+LDFLAGS = -ldflags "-s -w -X main.Version=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildDate=$(BUILD_DATE)"
+
 # Build unified scribe tool for current platform
 build:
 	@echo "Building scribe unified CLI..."
+	@echo "Version: $(VERSION)"
+	@echo "Git Commit: $(GIT_COMMIT)" 
+	@echo "Build Date: $(BUILD_DATE)"
 	@mkdir -p bin
 	go mod download
-	go build -o bin/scribe ./cmd/scribe
+	go build $(LDFLAGS) -o bin/scribe ./cmd/scribe
 	@echo "Build complete. Binary in ./bin/"
 
 # Build for all supported platforms
 build-all:
 	@echo "Building scribe for all supported platforms..."
+	@echo "Version: $(VERSION)"
+	@echo "Git Commit: $(GIT_COMMIT)"
+	@echo "Build Date: $(BUILD_DATE)"
 	@mkdir -p dist/{macos-amd64,macos-arm64,linux-amd64,linux-arm64}
 	go mod download
 	
 	@echo "Building for macOS AMD64..."
-	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/macos-amd64/scribe ./cmd/scribe
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o dist/macos-amd64/scribe ./cmd/scribe
 	
 	@echo "Building for macOS ARM64 (Apple Silicon)..."
-	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/macos-arm64/scribe ./cmd/scribe
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o dist/macos-arm64/scribe ./cmd/scribe
 	
 	@echo "Building for Linux AMD64 (Fedora/Ubuntu)..."
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/linux-amd64/scribe ./cmd/scribe
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/linux-amd64/scribe ./cmd/scribe
 	
 	@echo "Building for Linux ARM64..."
-	GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o dist/linux-arm64/scribe ./cmd/scribe
+	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/linux-arm64/scribe ./cmd/scribe
 	
 	@echo "Cross-compilation complete. Binaries in ./dist/"
 
@@ -182,7 +196,8 @@ release-binaries: build-all
 # Build release version with optimizations (legacy)
 release:
 	@echo "Building release version..."
+	@echo "Version: $(VERSION)"
 	@mkdir -p bin
 	go mod download
-	CGO_ENABLED=0 go build -ldflags "-s -w" -o bin/scribe ./cmd/scribe
+	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/scribe ./cmd/scribe
 	@echo "Release build complete."

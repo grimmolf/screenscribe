@@ -68,6 +68,13 @@ type VideoAnalysisInput struct {
 	Metadata   VideoMetadata    `json:"metadata"`
 }
 
+// Version information (set at build time)
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+)
+
 // Global flags
 var verbose bool
 
@@ -93,7 +100,27 @@ YouTube examples:
 Management:
   scribe update      # Update scribe from GitHub
   scribe uninstall   # Remove scribe from system`,
-	Version: "2.0.0",
+	Version: getVersionString(),
+}
+
+// getVersionString returns a formatted version string
+func getVersionString() string {
+	if Version == "dev" {
+		return fmt.Sprintf("%s (commit: %s, built: %s)", Version, GitCommit, BuildDate)
+	}
+	return Version
+}
+
+// versionCmd provides detailed version information
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Show version information",
+	Long:  `Display detailed version information including git commit and build date.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("scribe version %s\n", Version)
+		fmt.Printf("Git commit: %s\n", GitCommit)
+		fmt.Printf("Build date: %s\n", BuildDate)
+	},
 }
 
 func init() {
@@ -103,6 +130,7 @@ func init() {
 	rootCmd.AddCommand(analyzeCmd)
 	rootCmd.AddCommand(transcribeCmd)
 	rootCmd.AddCommand(framesCmd)
+	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(uninstallCmd)
 }
