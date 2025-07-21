@@ -241,8 +241,8 @@ def main(
         "--list-backends",
         help="List available audio backends and exit"
     ),
-    sampling_mode: str = typer.Option("scene", "--sampling-mode", help="Frame sampling mode (scene|interval)"),
-    interval: float = typer.Option(5.0, "--interval", help="Interval for interval sampling (seconds)"),
+    sampling_mode: str = typer.Option("interval", "--sampling-mode", help="Frame sampling mode (interval|scene). Default optimized for educational content"),
+    interval: float = typer.Option(45.0, "--interval", help="Interval for interval sampling (seconds). Default optimized for educational content"),
     scene_threshold: float = typer.Option(0.3, "--scene-threshold", help="Scene detection threshold"),
     prompts_dir: Optional[str] = typer.Option(None, "--prompts-dir", help="Custom directory for prompt templates"),
     copy_from_nas: bool = typer.Option(True, "--copy-from-nas/--no-copy-from-nas", help="Copy files from network storage locally for better performance"),

@@ -652,3 +652,44 @@ This document tracks all development work on the screenscribe project by Claude 
 - Reinforces need to always use `./[apple]` syntax for Apple Silicon installations
 - Critical reminder to test full installation flow after making dependency updates
 - Auto-selection now correctly prioritizes: MLX (Apple Silicon GPU) → faster-whisper (CPU fallback)
+
+---
+
+## DEVLOG-018: Optimize Defaults for Educational Content with Trading-Specific Prompts (2025-07-21)
+
+**Context**: Based on real-world testing with trading education video, identified that default scene detection settings (0.3 threshold) severely under-sampled educational content, missing 99% of frames including critical "magnitude of move" discussion at 15:13. User requested optimizing defaults for educational/training content.
+
+**Changes**:
+- **Updated Default Sampling Mode**: Changed from `scene` to `interval` sampling
+- **Updated Default Interval**: Changed from 5.0 seconds to 45.0 seconds  
+- **CLI Help Text**: Updated to indicate defaults are "optimized for educational content"
+- **Documentation Updates**: Updated usage guide to reflect new defaults and examples
+- **Trading-Specific Prompts**: Created specialized `prompts-trading/synthesis.md` for financial education content
+- **Models & CLI Alignment**: Ensured ProcessingOptions and CLI argument defaults match
+
+**Validation**:
+- Default behavior now captures 67 frames vs previous 3 frames (22x improvement)
+- Educational content like lectures, tutorials, presentations get comprehensive coverage
+- Trading education video now captures 15:13 "magnitude of move" content in Frame 20
+- CLI help text correctly shows new defaults: `[default: interval]` and `[default: 45.0]`
+- Scene detection still available for content with dramatic visual changes
+
+**Benefits**:
+- **✅ Better Out-of-Box Experience**: Educational content works well without configuration
+- **✅ Comprehensive Coverage**: 45-second intervals provide thorough content sampling
+- **✅ Trading Content Optimized**: Specialized prompts for financial education analysis
+- **✅ Backward Compatible**: Scene detection still available for appropriate content
+- **✅ User-Friendly Defaults**: No need to specify sampling flags for most use cases
+
+**Content Type Recommendations**:
+- **Educational/Tutorial Content**: Default interval sampling (now default)
+- **Movies/TV Shows**: Use `--sampling-mode scene` for dramatic cut detection  
+- **Trading/Financial Education**: Use `--prompts-dir ./prompts-trading/`
+- **Technical Presentations**: Default 45s intervals work well, or use 30s for detailed content
+
+**Notes**:
+- This addresses the core issue where educational content was severely under-sampled
+- Trading education example went from unusable (3 frames) to comprehensive (67 frames)  
+- Defaults now favor comprehensive coverage over processing speed optimization
+- Scene detection remains optimal for content with clear visual transitions
+- Specialized trading prompts focus on chart patterns, technical analysis, and market concepts

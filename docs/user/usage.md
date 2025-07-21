@@ -48,8 +48,8 @@ screenscribe video.mp4 --output ~/Documents/notes/
 
 **Processing Options:**
 - `--whisper-model` - Transcription accuracy: `tiny`, `base`, `small`, `medium`, `large` (default: `medium`)
-- `--sampling-mode` - Frame extraction: `scene` or `interval` (default: `scene`)
-- `--interval` - Seconds between frames for interval mode (default: `5.0`)
+- `--sampling-mode` - Frame extraction: `interval` or `scene` (default: `interval` - optimized for educational content)
+- `--interval` - Seconds between frames for interval mode (default: `45.0` - optimized for educational content)
 - `--scene-threshold` - Scene change sensitivity: 0.1 (sensitive) to 1.0 (less sensitive) (default: `0.3`)
 
 **LLM Options:**

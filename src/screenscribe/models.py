@@ -97,8 +97,8 @@ class ProcessingOptions(BaseModel):
     whisper_backend: Optional[str] = None  # Backend selection (mlx, faster-whisper, auto)
     llm_provider: str = "openai"
     no_fallback: bool = False
-    sampling_mode: str = Field(pattern="^(scene|interval)$")
-    interval_seconds: float = 5.0
+    sampling_mode: str = Field(pattern="^(scene|interval)$", default="interval")
+    interval_seconds: float = 45.0
     scene_threshold: float = 0.3
     thumbnail_width: int = 320
     verbose: bool = False
