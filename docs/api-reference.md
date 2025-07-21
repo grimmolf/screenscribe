@@ -109,28 +109,31 @@ class ProcessingOptions(BaseModel):
 ## Audio Processing Module
 
 ### AudioProcessor
-Handles audio extraction and transcription using OpenAI Whisper.
+Handles audio extraction and transcription using faster-whisper.
 
 ```python
 class AudioProcessor:
     def __init__(self, model_name: str = "medium")
-        """Initialize with Whisper model."""
+        """Initialize with faster-whisper model."""
     
     async def extract_audio(self, video_path: Path) -> Path
         """Extract audio track from video file."""
     
     def transcribe(self, audio_path: Path, language: Optional[str] = None) -> Dict[str, Any]
-        """Transcribe audio using Whisper."""
+        """Transcribe audio using faster-whisper with VAD."""
     
     def get_model_info(self) -> Dict[str, Any]
         """Get information about loaded model."""
 ```
 
 **Key Features:**
-- Automatic GPU/CPU fallback for Whisper models
+- Automatic GPU/CPU fallback with enhanced memory management
+- Voice Activity Detection (VAD) for improved transcription quality
+- 2-5x faster processing than openai-whisper
+- Efficient compute type optimization (float16 for GPU, int8 for CPU)
 - Progress tracking during transcription
 - Audio format validation and conversion
-- Word-level timestamp extraction (when available)
+- Word-level timestamp extraction with improved accuracy
 
 ## Video Processing Module
 

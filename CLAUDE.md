@@ -67,7 +67,7 @@ python -m screenscribe video.mp4 --output notes/ --format html --whisper-model m
 
 ## Key Dependencies (Target)
 
-- **openai-whisper**: Audio transcription engine
+- **faster-whisper**: Audio transcription engine (2-5x faster than openai-whisper)
 - **opencv-python**: Video frame processing
 - **yt-dlp**: YouTube video download support
 - **litellm**: LLM provider abstraction with fallbacks
@@ -93,7 +93,7 @@ Environment variables (via .env):
 ### Error Handling Patterns
 - Use graceful degradation (continue processing if individual components fail)
 - Provide clear error messages with recovery suggestions
-- Implement fallbacks (GPU → CPU for Whisper, primary → backup LLM)
+- Implement fallbacks (GPU → CPU for faster-whisper, primary → backup LLM)
 
 ### Performance Considerations
 - Stream processing for large videos (avoid loading entire video into memory)
@@ -103,7 +103,7 @@ Environment variables (via .env):
 
 ### Critical Implementation Notes
 - Always use pathlib.Path for cross-platform compatibility
-- Whisper models are large (~1.5GB for medium) - handle first-download gracefully
+- faster-whisper models are large (~1.5GB for medium) - handle first-download gracefully
 - Check system dependencies (ffmpeg, CUDA) before processing
 - Use temporary files for intermediate processing, clean up afterward
 - Respect API rate limits and implement exponential backoff

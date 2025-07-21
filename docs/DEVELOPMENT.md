@@ -51,7 +51,7 @@ Our development followed a comprehensive PRP that detailed:
 
 **Implementation Strategy:**
 - Python-based CLI with Typer for user interface
-- OpenAI Whisper for high-quality transcription
+- faster-whisper for high-quality transcription (2-5x faster with Voice Activity Detection)
 - FFmpeg + OpenCV for video processing
 - LiteLLM for multi-provider LLM integration
 - Pydantic for robust data validation
@@ -120,9 +120,12 @@ src/screenscribe/
 
 ### Key Technical Decisions
 
-**Why Whisper?**
-- State-of-the-art accuracy for technical content
-- Local processing capability
+**Why faster-whisper?**
+- 2-5x faster processing than openai-whisper
+- Enhanced accuracy with Voice Activity Detection (VAD)
+- Better GPU memory management and efficiency
+- Active development vs stagnant openai-whisper
+- Local processing capability with improved performance
 - Multiple model sizes for speed/quality trade-offs
 
 **Why Scene Detection?**

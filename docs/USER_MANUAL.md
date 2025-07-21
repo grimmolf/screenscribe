@@ -560,12 +560,14 @@ screenscribe video.mp4 \
 
 #### Performance Expectations
 
+*Note: With faster-whisper, transcription is 2-5x faster than previous openai-whisper versions*
+
 | Video Length | Processing Time | Peak RAM | API Calls | Disk Usage |
 |-------------|----------------|----------|-----------|------------|
-| 5 min       | 2-3 min        | ~2 GB    | 10-20     | ~50 MB     |
-| 15 min      | 5-8 min        | ~3 GB    | 20-40     | ~150 MB    |
-| 30 min      | 8-15 min       | ~4 GB    | 25-50     | ~300 MB    |
-| 60 min      | 15-30 min      | ~6 GB    | 40-80     | ~600 MB    |
+| 5 min       | 1-2 min        | ~1.5 GB  | 10-20     | ~50 MB     |
+| 15 min      | 3-5 min        | ~2 GB    | 20-40     | ~150 MB    |
+| 30 min      | 5-10 min       | ~3 GB    | 25-50     | ~300 MB    |
+| 60 min      | 10-20 min      | ~4 GB    | 40-80     | ~600 MB    |
 
 ---
 
@@ -710,9 +712,10 @@ screenscribe video.mp4 --sampling-mode interval --interval 30
 - Check video format compatibility
 
 #### Poor Transcription Quality
-- Use larger Whisper model (`medium` or `large`)
+- Use larger faster-whisper model (`medium` or `large`)
 - Ensure good audio quality in source video
 - Try different video if audio is unclear
+- **Note**: faster-whisper includes Voice Activity Detection (VAD) which automatically improves transcription quality by filtering out non-speech audio
 
 #### Poor Visual Analysis
 - Use custom prompts for your content type

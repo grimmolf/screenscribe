@@ -300,3 +300,44 @@ This document tracks all development work on the screenscribe project by Claude 
 - Performance gains will be immediately visible to users
 - Maintains all existing functionality while adding improvements
 - Sets foundation for reliable cross-platform distribution
+
+---
+
+## DEVLOG-009: Update Documentation for faster-whisper Migration (2025-01-21)
+
+**Context**: After successfully migrating from openai-whisper to faster-whisper (DEVLOG-008), comprehensive documentation review revealed multiple technical references, performance claims, and feature descriptions that needed updates to accurately reflect the new implementation.
+
+**Changes**:
+- **CLAUDE.md Updates**: 
+  - Changed dependency reference from "openai-whisper" to "faster-whisper (2-5x faster than openai-whisper)"
+  - Updated model size references and fallback mechanism descriptions
+  - Corrected technical implementation notes
+- **docs/api-reference.md Updates**:
+  - Updated AudioProcessor class documentation with faster-whisper specific features
+  - Added Voice Activity Detection (VAD) capabilities documentation
+  - Documented enhanced GPU memory management and compute type optimization
+  - Updated method descriptions to reflect faster-whisper API
+- **docs/DEVELOPMENT.md Updates**:
+  - Renamed section from "Why Whisper?" to "Why faster-whisper?"
+  - Added comprehensive reasoning including performance benefits and active development status
+  - Updated technical decision rationale
+- **docs/USER_MANUAL.md Updates**:
+  - Updated performance expectations table with 2-5x faster processing times
+  - Reduced memory requirements to reflect faster-whisper efficiency
+  - Added VAD explanation in transcription quality troubleshooting
+  - Updated processing time estimates across all video lengths
+
+**Validation**:
+- Comprehensive documentation review completed to identify all faster-whisper references
+- Performance claims verified against faster-whisper benchmarks
+- Technical accuracy validated for all API changes
+- Cross-references checked between related documentation sections
+- User-facing content updated to reflect new capabilities and performance
+
+**Notes**:
+- Documentation now accurately represents faster-whisper capabilities and performance
+- Users will have correct expectations for processing times and system requirements
+- New features like VAD are properly documented for user benefit
+- Technical documentation maintains accuracy for developers
+- Performance improvements are clearly communicated throughout user-facing content
+- Sets proper expectations for the enhanced user experience
