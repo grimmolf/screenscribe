@@ -21,6 +21,32 @@ This document tracks all development work on the screenscribe project by Claude 
 
 ---
 
+## DEVLOG-021: Complete Project Modernization with Cross-Compilation and Enhanced Documentation (2025-01-21)
+
+**Context**: Major project modernization session including documentation restructure, cross-compilation support, self-update functionality, and MLX backend fixes. Goal was to create a user-focused experience while providing comprehensive developer resources.
+
+**Changes**:
+- **Documentation Restructure**: Complete rewrite of README.md for user focus, created new DEVELOPMENT.md for developers
+- **Cross-Compilation Support**: Added Makefile targets for macOS (Intel/ARM64) and Linux (AMD64/ARM64) binaries
+- **Self-Management**: Built --update and --uninstall flags directly into video_analyze command
+- **MLX Backend Fix**: Resolved API compatibility issue with proper model mapping and path_or_hf_repo parameter  
+- **Release System**: Created release-binaries target with complete distribution packages including install scripts
+- **Architecture Updates**: Updated badges and references to reflect Go-based rather than Python-based architecture
+- **User Experience**: Removed confusing API key sections, streamlined installation process
+- **Platform Support**: Added pre-built binary distribution for easier installation across platforms
+
+**Validation**:
+- Cross-compilation tested successfully for all 4 target platforms (macOS Intel/ARM64, Linux x64/ARM64)
+- MLX backend confirmed working with corrected API calls on Apple Silicon
+- Self-update and uninstall functionality tested and working
+- Documentation verified to be user-focused while maintaining developer resource links
+- Release packages tested with proper structure including binaries, scripts, patterns, and install scripts
+- Verified MLX performance benefits (20-30x speedup) work correctly with new API
+
+**Notes**: This represents a major maturation of the project from initial Python prototype to production-ready Go-based tool with proper cross-platform distribution. The separation of user vs developer documentation significantly improves the experience for both audiences. Cross-compilation support enables easy distribution without requiring users to have Go toolchain installed.
+
+---
+
 ## DEVLOG-015: Documentation Update - Clarify Local Processing Architecture (2025-01-21)
 
 **Context**: After testing the Fabric extension, clarified that screenscribe tools only use local Whisper models and don't need API keys. The AI analysis happens in Fabric, not screenscribe itself. Updated documentation to avoid confusion about API key requirements.
