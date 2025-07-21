@@ -219,6 +219,6 @@ MIT License - see LICENSE file for details.
 
 ## 🤝 Support & Contributing
 
-- **Issues**: [GitHub Issues](https://github.com/screenscribe/screenscribe/issues)
+- **Issues**: [GitHub Issues](https://github.com/grimmolf/screenscribe/issues)
 - **Contributing**: See [Development Guide](docs/DEVELOPMENT.md)
-- **Discussions**: [GitHub Discussions](https://github.com/screenscribe/screenscribe/discussions)
+- **Discussions**: [GitHub Discussions](https://github.com/grimmolf/screenscribe/discussions)
