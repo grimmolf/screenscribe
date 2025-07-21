@@ -227,3 +227,33 @@ This document tracks all development work on the screenscribe project by Claude 
 - Documentation structure now follows logical progression: README → User Manual → Developer Guide
 - Clear separation allows users and developers to find relevant information quickly
 - Significantly reduced cognitive load for new users while maintaining comprehensive resources
+
+---
+
+## DEVLOG-007: Clarify Installation Instructions for Development vs Release (2025-01-21)
+
+**Context**: User encountered `uv tool install screenscribe` error: "No solution found when resolving dependencies: screenscribe was not found in the package registry." This confusion occurs because screenscribe isn't published to PyPI yet, but documentation suggested registry installation commands that don't work for development users.
+
+**Changes**:
+- **Installation Section Restructure**: Separated "Install from Release (Coming Soon)" vs "Install for Development (Current)"
+- **Quick Start Update**: Changed from registry-based to source-based installation instructions
+- **Error-Specific Troubleshooting**: Added dedicated section for "screenscribe not found in package registry" error
+- **Command Clarification**: 
+  - `uv tool install screenscribe` → For published packages (not available yet)
+  - `uv tool install --editable .` → For source code/development (correct current method)
+- **Both Documents Updated**: Consistent messaging across README and User Manual
+- **Clear Navigation**: From error message to correct solution
+
+**Validation**:
+- Installation commands tested to reproduce the error scenario
+- Development installation method (`uv tool install --editable .`) verified to work correctly
+- Documentation clarity reviewed from new user perspective
+- Troubleshooting section specifically addresses the exact error message users encounter
+- Cross-references between README and User Manual maintained consistency
+
+**Notes**:
+- Addresses immediate user confusion about package registry vs local installation  
+- Provides clear migration path when package is eventually published to PyPI
+- Prevents other users from encountering the same installation error
+- Maintains development workflow while clarifying publication status
+- Troubleshooting section provides both the solution and explanation of why the error occurs

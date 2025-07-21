@@ -21,39 +21,61 @@
 
 ## 🚀 Quick Start
 
-```bash
-# One-command install
-curl -LsSf https://raw.githubusercontent.com/screenscribe/screenscribe/main/scripts/install.sh | bash
+**For development/source code users:**
 
-# Set your OpenAI API key
+```bash
+# 1. Clone or download this repository
+cd /path/to/screenscribe/
+
+# 2. Install from source  
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install --editable .
+
+# 3. Set your OpenAI API key
 export OPENAI_API_KEY="sk-your-key-here"
 
-# Process your first video
+# 4. Process your first video
 screenscribe video.mp4
 ```
 
 ## 📦 Installation
 
-### Install
+### Install from Release (Coming Soon)
+
+Once published to PyPI, you'll be able to install with:
 
 ```bash
-# One-command install (recommended)
+# One-command install (when released)
 curl -LsSf https://raw.githubusercontent.com/screenscribe/screenscribe/main/scripts/install.sh | bash
+
+# Or manually (when released)
+uv tool install screenscribe
 ```
 
-**Or manually:**
+### Install for Development (Current)
+
+**If you're working with the source code or cloned this repository:**
+
 ```bash
-# Install uv (if not already installed)
+# 1. Navigate to the project directory
+cd /path/to/screenscribe/
+
+# 2. Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install screenscribe
-uv tool install screenscribe
+# 3. Install screenscribe from source (editable mode)
+uv tool install --editable .
 
-# Install FFmpeg (required)
+# 4. Install FFmpeg (required)
 # macOS: brew install ffmpeg
 # Ubuntu: sudo apt install ffmpeg  
 # Fedora: sudo dnf install ffmpeg
 ```
+
+**Why use `--editable .`?**
+- Installs from your local source code (not PyPI)
+- Changes to code reflect immediately without reinstall
+- Perfect for development and testing
 
 ### Uninstall
 
@@ -154,8 +176,12 @@ screenscribe tutorial.mp4 --prompts-dir ./my-prompts/
 
 ## 🛠️ Troubleshooting
 
-**Common Issues:**
+**Installation Issues:**
+- **"screenscribe not found in package registry"** → Use `uv tool install --editable .` for development/source code
+- **"command not found: screenscribe"** → Add `~/.local/bin` to your PATH
 - **FFmpeg not found** → Install FFmpeg for your OS
+
+**Runtime Issues:**
 - **Out of memory** → Use `--whisper-model tiny` 
 - **API errors** → Check your `OPENAI_API_KEY`
 - **No audio** → Ensure video has audio track

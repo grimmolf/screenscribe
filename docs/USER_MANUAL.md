@@ -37,14 +37,20 @@
 
 ### Quick Start
 
-```bash
-# 1. Install screenscribe
-curl -LsSf https://raw.githubusercontent.com/screenscribe/screenscribe/main/scripts/install.sh | bash
+**For development/source code users:**
 
-# 2. Set your API key
+```bash
+# 1. Navigate to screenscribe directory
+cd /path/to/screenscribe/
+
+# 2. Install from source
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install --editable .
+
+# 3. Set your API key
 export OPENAI_API_KEY="sk-your-key-here"
 
-# 3. Process your first video
+# 4. Process your first video
 screenscribe video.mp4
 ```
 
@@ -52,25 +58,31 @@ screenscribe video.mp4
 
 ## Installation
 
-### One-Command Install (Recommended)
+### Install from Release (Coming Soon)
+
+Once published to PyPI, you'll be able to install with:
 
 ```bash
+# One-command install (when released)
 curl -LsSf https://raw.githubusercontent.com/screenscribe/screenscribe/main/scripts/install.sh | bash
+
+# Or manually (when released)
+uv tool install screenscribe
 ```
 
-This automatically installs:
-- ✅ `uv` (Python package manager)
-- ✅ FFmpeg (video processing)
-- ✅ screenscribe (global command)
+### Install for Development (Current)
 
-### Manual Installation
+**If you're working with source code or cloned this repository:**
 
 ```bash
-# 1. Install uv
+# 1. Navigate to the project directory
+cd /path/to/screenscribe/
+
+# 2. Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 2. Install screenscribe
-uv tool install screenscribe
+# 3. Install screenscribe from source (editable mode)
+uv tool install --editable .
 
 # 3. Install FFmpeg
 # macOS: brew install ffmpeg
@@ -638,6 +650,19 @@ screenscribe "$1" --prompts-dir "$PROMPTS_DIR" "${@:2}"
 ## Troubleshooting
 
 ### Installation Issues
+
+#### "screenscribe not found in package registry"
+**Problem**: Getting error when running `uv tool install screenscribe`
+
+**Solution**: This error occurs because screenscribe isn't published to PyPI yet. Use the development installation method:
+```bash
+cd /path/to/screenscribe/
+uv tool install --editable .
+```
+
+**Why**: 
+- `uv tool install screenscribe` → Looks for package on PyPI (fails)
+- `uv tool install --editable .` → Installs from local source code (works)
 
 #### Command not found: screenscribe
 ```bash
