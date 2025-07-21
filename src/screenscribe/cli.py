@@ -142,7 +142,7 @@ async def process_local_file(
         console.print(f"📹 Video: {metadata.title} ({metadata.duration_str})")
         
         # Initialize processors
-        audio_processor = AudioProcessor(options.whisper_model)
+        audio_processor = AudioProcessor(options.whisper_model, backend=options.whisper_backend)
         video_processor = VideoProcessor(
             options.sampling_mode,
             options.interval_seconds,
@@ -231,6 +231,16 @@ def main(
     llm: str = typer.Option("openai", "--llm", help="LLM provider"),
     no_fallback: bool = typer.Option(False, "--no-fallback", help="Disable LLM fallbacks"),
     whisper_model: str = typer.Option("medium", "--whisper-model", help="Whisper model size"),
+    whisper_backend: Optional[str] = typer.Option(
+        None,
+        "--whisper-backend",
+        help="Audio backend: mlx (Apple Silicon GPU), faster-whisper (universal), or auto"
+    ),
+    list_backends: bool = typer.Option(
+        False,
+        "--list-backends",
+        help="List available audio backends and exit"
+    ),
     sampling_mode: str = typer.Option("scene", "--sampling-mode", help="Frame sampling mode (scene|interval)"),
     interval: float = typer.Option(5.0, "--interval", help="Interval for interval sampling (seconds)"),
     scene_threshold: float = typer.Option(0.3, "--scene-threshold", help="Scene detection threshold"),
@@ -243,6 +253,32 @@ def main(
     # Setup logging
     setup_logging(verbose)
     
+    # Handle backend listing
+    if list_backends:
+        from .audio_backends import get_available_backends
+        
+        console.print("\n🔍 Available Audio Backends:", style="bold")
+        for info in get_available_backends(whisper_model):
+            status = "✅" if info.available else "❌"
+            device_info = f"{info.device}"
+            if info.compute_type:
+                device_info += f" ({info.compute_type})"
+            
+            console.print(f"  {status} {info.name}: {device_info}")
+            if info.reason and not info.available:
+                console.print(f"     {info.reason}", style="dim")
+        
+        raise typer.Exit(0)
+    
+    # Validate backend choice
+    if whisper_backend and whisper_backend not in ["mlx", "faster-whisper", "whisper-cpp", "auto"]:
+        console.print(
+            f"❌ Invalid backend '{whisper_backend}'. "
+            f"Choose from: mlx, faster-whisper, auto",
+            style="red"
+        )
+        raise typer.Exit(1)
+    
     # Validate inputs
     validate_inputs(input, output, format, sampling_mode, whisper_model, llm)
     
@@ -254,6 +290,7 @@ def main(
         output_dir=output,
         output_format=format,
         whisper_model=whisper_model,
+        whisper_backend=whisper_backend if whisper_backend != "auto" else None,
         llm_provider=llm,
         no_fallback=no_fallback,
         sampling_mode=sampling_mode,

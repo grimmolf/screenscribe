@@ -40,6 +40,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Platform-specific audio backends
+apple = [
+    "mlx-whisper>=0.2.0",  # Apple Silicon GPU acceleration
+]
+
+# Development dependencies
 dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
@@ -47,6 +53,11 @@ dev = [
     "mypy>=1.7.0",
     "black>=23.0.0",
     "pytest-cov>=4.1.0",
+]
+
+# Install all optional backends
+all = [
+    "screenscribe[apple]",
 ]
 
 [project.scripts]

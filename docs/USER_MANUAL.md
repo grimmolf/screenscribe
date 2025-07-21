@@ -24,7 +24,8 @@
 ### What is screenscribe?
 
 **screenscribe** transforms videos into structured, searchable notes by combining:
-- 🎤 **Audio transcription** with faster-whisper (2-5x faster than OpenAI Whisper)
+- 🎤 **Multi-backend transcription** with intelligent backend selection
+- ⚡ **Apple Silicon GPU acceleration** (2-8x faster on M1/M2/M3 Macs)
 - 👁️ **Visual analysis** with GPT-4 Vision
 - 📝 **Smart synthesis** into Markdown or HTML notes
 
@@ -43,8 +44,13 @@
 # 1. Navigate to screenscribe directory
 cd /path/to/screenscribe/
 
-# 2. Install from source
+# 2. Install from source (with Apple Silicon optimization)
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Apple Silicon Macs (M1/M2/M3) - GPU acceleration
+uv tool install --editable './[apple]'
+
+# Other platforms
 uv tool install --editable .
 
 # 3. Set your API key
@@ -203,6 +209,13 @@ screenscribe lecture.mp4 --output ./my-notes/
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--whisper-model` | Model size (tiny/base/small/medium/large) | `medium` |
+| `--whisper-backend` | Audio backend (auto/faster-whisper/mlx) | `auto` |
+| `--list-backends` | Show available backends and exit | N/A |
+
+**Backend Selection:**
+- **auto**: Automatically selects best available backend (MLX for Apple Silicon, faster-whisper for others)
+- **faster-whisper**: Universal CPU-optimized backend, works on all platforms  
+- **mlx**: Apple Silicon GPU acceleration (M1/M2/M3 Macs only, requires `[apple]` install)
 
 **Model Comparison:**
 - `tiny`: Fastest, lower accuracy
@@ -547,22 +560,90 @@ screenscribe long-video.mp4 \
 
 ---
 
+## Audio Backend Selection
+
+### Multi-Backend System
+
+screenscribe uses an intelligent multi-backend system for audio transcription:
+
+**Available Backends:**
+- **MLX (Apple Silicon)**: GPU-accelerated transcription for M1/M2/M3 Macs (2-8x faster)
+- **faster-whisper (Universal)**: CPU-optimized transcription for all platforms
+
+### Checking Available Backends
+
+```bash
+# List all available backends
+screenscribe --list-backends test.mp4
+
+# Example output:
+# 🔍 Available Audio Backends:
+#   ✅ mlx: gpu (float16)         # Apple Silicon GPU
+#   ✅ faster-whisper: cpu (int8)  # CPU fallback
+```
+
+### Backend Selection
+
+**Automatic Selection (Recommended):**
+```bash
+# Auto-selects best available backend
+screenscribe video.mp4
+```
+
+**Manual Backend Selection:**
+```bash
+# Force MLX backend (Apple Silicon GPU)
+screenscribe video.mp4 --whisper-backend mlx
+
+# Force faster-whisper backend (Universal CPU)
+screenscribe video.mp4 --whisper-backend faster-whisper
+```
+
+### Performance Comparison
+
+**Apple Silicon Performance (M1/M2/M3 Macs):**
+- **MLX Backend**: ~24 seconds for 49-minute video
+- **CPU Backend**: ~200+ seconds for same video
+- **Speedup**: 8x faster with MLX GPU acceleration
+
+**Intel/AMD/Other Platforms:**
+- **faster-whisper**: Optimized CPU performance
+- **Thread Optimization**: Automatically uses optimal CPU thread count
+
 ## Performance Tuning
 
 ### Speed vs Quality Trade-offs
 
 #### Fastest Processing
 ```bash
+# Apple Silicon Macs (use GPU acceleration)
 screenscribe video.mp4 \
   --whisper-model tiny \
+  --whisper-backend mlx \
+  --sampling-mode interval \
+  --interval 10
+
+# Other systems (optimized CPU)
+screenscribe video.mp4 \
+  --whisper-model tiny \
+  --whisper-backend faster-whisper \
   --sampling-mode interval \
   --interval 10
 ```
 
 #### Best Quality
 ```bash
+# Apple Silicon Macs (GPU accelerated)
 screenscribe video.mp4 \
   --whisper-model large \
+  --whisper-backend mlx \
+  --sampling-mode scene \
+  --scene-threshold 0.1
+
+# Other systems
+screenscribe video.mp4 \
+  --whisper-model large \
+  --whisper-backend faster-whisper \
   --sampling-mode scene \
   --scene-threshold 0.1
 ```

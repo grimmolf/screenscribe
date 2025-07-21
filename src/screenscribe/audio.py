@@ -1,6 +1,5 @@
 """Audio processing module for screenscribe."""
 
-from faster_whisper import WhisperModel
 from pathlib import Path
 import subprocess
 import tempfile
@@ -16,6 +15,7 @@ import logging
 from typing import Dict, Any, Optional, List, Tuple
 
 from .config import config
+from .audio_backends import get_best_backend, get_available_backends
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -45,128 +45,29 @@ def _signal_handler(signum, frame):
 _original_handler = signal.signal(signal.SIGINT, _signal_handler)
 
 
-def _get_optimal_device() -> tuple[str, str]:
-    """Determine the optimal device and compute type for faster-whisper."""
-    try:
-        import torch
-        import platform
-        
-        machine = platform.machine().lower()
-        
-        # For Apple Silicon, try different device configurations
-        if 'arm64' in machine or 'aarch64' in machine:
-            console.print("🍎 Apple Silicon detected - optimizing for M3 Ultra", style="blue")
-            
-            # Check if we can use Metal Performance Shaders
-            if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-                console.print("🚀 Metal Performance Shaders detected - attempting GPU acceleration", style="green")
-                # Try mps device first for Apple Silicon GPU acceleration
-                return "mps", "float16"
-            else:
-                console.print("⚡ Using CPU with optimized threading for Apple Silicon", style="yellow")
-                return "cpu", "int8"
-        
-        # Check for NVIDIA CUDA
-        elif torch.cuda.is_available():
-            return "cuda", "float16"
-            
-        # Fall back to CPU
-        else:
-            return "cpu", "int8"
-            
-    except ImportError:
-        # If torch isn't available, assume CPU for Apple Silicon
-        import platform
-        machine = platform.machine().lower()
-        if 'arm64' in machine or 'aarch64' in machine:
-            console.print("🍎 Apple Silicon detected (no torch) - using optimized CPU", style="blue")
-            return "cpu", "int8"
-        return "cpu", "int8"
-
-
 class AudioProcessor:
-    """Handles audio extraction and transcription using faster-whisper."""
+    """Handles audio extraction and transcription using best available backend."""
     
-    def __init__(self, model_name: str = "medium"):
+    def __init__(self, model_name: str = "medium", backend: Optional[str] = None):
+        """
+        Initialize audio processor with platform-optimized backend.
+        
+        Args:
+            model_name: Whisper model size (tiny, base, small, medium, large)
+            backend: Force specific backend (mlx, faster-whisper) or None for auto
+        """
         self.model_name = model_name
-        # Get optimal device and compute type for this system
-        self.device, self.compute_type = _get_optimal_device()
-        self.model: Optional[WhisperModel] = None
-        
-        device_info = {
-            "mps": "Apple Silicon GPU (Metal)",
-            "cuda": "NVIDIA GPU", 
-            "cpu": "CPU (Apple Silicon Optimized)" if self.device == "cpu" and self.compute_type == "int8" else "CPU"
-        }.get(self.device, self.device)
-        
-        logger.info(f"Initializing AudioProcessor with model '{model_name}' on {device_info} ({self.compute_type})")
+        self.backend = get_best_backend(model_name, preferred=backend)
         self._checkpoint_file: Optional[Path] = None
-    
-    def _load_model(self) -> None:
-        """Load faster-whisper model with error handling."""
-        if self.model is not None:
-            return
         
-        try:
-            logger.info(f"Loading faster-whisper model: {self.model_name}")
-            
-            # Apple Silicon optimizations
-            cpu_threads = None
-            if self.device == "cpu":
-                import os
-                import platform
-                
-                total_cores = os.cpu_count() or 4
-                machine = platform.machine().lower()
-                
-                if 'arm64' in machine or 'aarch64' in machine:
-                    # Apple Silicon: Use most cores but leave some headroom
-                    # M3 Ultra has 28 cores, M3 Max has 16, M3 Pro has 12, M3 has 8
-                    cpu_threads = max(4, int(total_cores * 0.85))  # Use 85% of cores
-                    logger.info(f"Apple Silicon detected: Using {cpu_threads}/{total_cores} CPU threads")
-                else:
-                    # Intel or other architectures
-                    cpu_threads = min(8, total_cores)
-                    logger.info(f"Using {cpu_threads}/{total_cores} CPU threads")
-            
-            self.model = WhisperModel(
-                self.model_name, 
-                device=self.device,
-                compute_type=self.compute_type,
-                cpu_threads=cpu_threads,
-                download_root=str(config.whisper_cache_dir) if hasattr(config, 'whisper_cache_dir') else None
-            )
-        except Exception as e:
-            if "out of memory" in str(e).lower() and (self.device == "cuda" or self.device == "mps"):
-                logger.warning(f"GPU out of memory on {self.device}, falling back to CPU")
-                self.device = "cpu" 
-                self.compute_type = "int8"
-                self.model = WhisperModel(
-                    self.model_name, 
-                    device="cpu",
-                    compute_type="int8",
-                    cpu_threads=max(4, int((os.cpu_count() or 4) * 0.85)),
-                    download_root=str(config.whisper_cache_dir) if hasattr(config, 'whisper_cache_dir') else None
-                )
-            elif "incompatible constructor arguments" in str(e) or "device" in str(e).lower():
-                # MPS or other device not supported, fall back to CPU
-                logger.warning(f"Device '{self.device}' not supported by faster-whisper, falling back to CPU")
-                self.device = "cpu"
-                self.compute_type = "int8"
-                
-                import os
-                cpu_threads = max(4, int((os.cpu_count() or 4) * 0.85))
-                
-                self.model = WhisperModel(
-                    self.model_name, 
-                    device="cpu",
-                    compute_type="int8",
-                    cpu_threads=cpu_threads,
-                    download_root=str(config.whisper_cache_dir) if hasattr(config, 'whisper_cache_dir') else None
-                )
-                logger.info(f"Successfully loaded model on CPU with {cpu_threads} threads")
-            else:
-                raise RuntimeError(f"Failed to load faster-whisper model: {e}")
+        # Log backend selection
+        backend_info = self.backend.get_info()
+        console.print(
+            f"🎙️ Audio backend: {backend_info.name} "
+            f"({'GPU' if 'gpu' in backend_info.device else backend_info.device.upper()})",
+            style="blue"
+        )
+    
     
     def _check_nas_performance(self, file_path: Path) -> bool:
         """Check if file is on slow network storage and should be copied locally."""
@@ -289,15 +190,13 @@ class AudioProcessor:
             raise RuntimeError(f"Failed to extract audio: {e.stderr}")
     
     def transcribe(self, audio_path: Path, language: Optional[str] = None) -> Dict[str, Any]:
-        """Transcribe audio file using faster-whisper."""
+        """Transcribe audio file using the selected backend."""
         logger.info(f"Transcribing audio: {audio_path}")
-        
-        self._load_model()
         
         if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
         
-        # Create progress bar
+        # Create progress indicator
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -305,105 +204,40 @@ class AudioProcessor:
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TimeElapsedColumn(),
         ) as progress:
-            task = progress.add_task("Transcribing audio...", total=100)
+            task = progress.add_task(
+                f"Transcribing with {self.backend.get_info().name}...", 
+                total=100
+            )
             
             try:
                 # Check for interruption before starting transcription
                 if _shutdown_requested:
                     raise KeyboardInterrupt("Transcription interrupted before starting")
                 
-                # faster-whisper returns segments and info separately
-                segments, info = self.model.transcribe(
-                    str(audio_path),
-                    language=language,
-                    word_timestamps=True,
-                    vad_filter=True,  # Voice activity detection
-                    vad_parameters=dict(min_silence_duration_ms=500)
-                )
-                
-                progress.update(task, completed=30)
-                
-                # Convert segments to list and format similar to openai-whisper
-                segment_list = []
-                segment_count = 0
-                
-                # Use iterator to get segments with more frequent interruption checks
-                segments_iter = iter(segments)
-                
-                while True:
-                    try:
-                        # Check for interruption before processing next segment
-                        if _shutdown_requested:
-                            console.print("\\n💾 Transcription interrupted - partial results will be returned", style="yellow")
-                            break
-                        
-                        # Get next segment
-                        segment = next(segments_iter)
-                        
-                        segment_dict = {
-                        "id": segment.id,
-                        "seek": int(segment.start * 100),  # Convert to centiseconds
-                        "start": segment.start,
-                        "end": segment.end,
-                        "text": segment.text.strip(),
-                        "tokens": [],  # faster-whisper doesn't expose tokens by default
-                        "temperature": getattr(segment, 'temperature', 0.0),
-                        "avg_logprob": getattr(segment, 'avg_logprob', 0.0),
-                        "compression_ratio": getattr(segment, 'compression_ratio', 0.0),
-                        "no_speech_prob": getattr(segment, 'no_speech_prob', 0.0),
-                        "words": []
-                    }
-                    
-                    # Add word-level timestamps if available
-                    if hasattr(segment, 'words') and segment.words:
-                        for word in segment.words:
-                            word_dict = {
-                                "word": word.word,
-                                "start": word.start,
-                                "end": word.end,
-                                "probability": getattr(word, 'probability', 1.0)
-                            }
-                            segment_dict["words"].append(word_dict)
-                    
-                        segment_list.append(segment_dict)
-                        segment_count += 1
-                        
-                        # Update progress every 5 segments for more responsive interruption
-                        if segment_count % 5 == 0:
-                            progress.update(task, completed=min(30 + segment_count * 2, 90))
-                    
-                    except StopIteration:
-                        # End of segments
-                        break
-                    except Exception as e:
-                        logger.error(f"Error processing segment: {e}")
-                        break
-                
+                # Transcribe using backend
+                result = self.backend.transcribe(audio_path, language)
                 progress.update(task, completed=100)
                 
-                # Format result to match openai-whisper structure
-                result = {
-                    "text": " ".join(segment["text"] for segment in segment_list),
-                    "segments": segment_list,
-                    "language": info.language,
-                    "language_probability": info.language_probability,
-                    "duration": info.duration,
-                    "duration_after_vad": getattr(info, 'duration_after_vad', info.duration)
+                # Convert to dict for compatibility with existing code
+                return {
+                    "text": result.text,
+                    "segments": [seg.dict() for seg in result.segments],
+                    "language": result.language,
+                    "duration": result.duration
                 }
                 
-                logger.info(f"Transcription completed. {len(segment_list)} segments found")
-                return result
-                
             except Exception as e:
-                raise RuntimeError(f"Transcription failed: {e}")
+                logger.error(f"Transcription failed: {e}")
+                raise
     
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the loaded model."""
+        backend_info = self.backend.get_info()
         return {
             "model_name": self.model_name,
-            "device": self.device,
-            "compute_type": self.compute_type,
-            "cache_dir": str(config.whisper_cache_dir) if hasattr(config, 'whisper_cache_dir') else None,
-            "loaded": self.model is not None,
-            "engine": "faster-whisper"
+            "backend": backend_info.name,
+            "device": backend_info.device,
+            "compute_type": backend_info.compute_type,
+            "available": backend_info.available,
+            "cache_dir": str(config.whisper_cache_dir) if hasattr(config, 'whisper_cache_dir') else None
         }

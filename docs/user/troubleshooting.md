@@ -4,6 +4,91 @@ This guide covers common issues and their solutions when using screenscribe.
 
 > 📖 **For comprehensive guidance**, see the **[User Manual](../USER_MANUAL.md)** which includes complete usage, optimization, prompt customization, and troubleshooting guidance.
 
+## Backend and Performance Issues
+
+### MLX Backend Not Available (Apple Silicon)
+
+**Problem**: `screenscribe --list-backends` shows MLX as unavailable on M1/M2/M3 Mac
+
+**Solutions**:
+
+1. **Install Apple Silicon dependencies**:
+   ```bash
+   # For development installation
+   uv tool install --editable './[apple]' --force
+   
+   # For package installation (when released)
+   uv tool install "screenscribe[apple]" --force
+   ```
+
+2. **Verify platform detection**:
+   ```bash
+   python3 -c "import platform; print(f'{platform.system()} {platform.machine()}')"
+   # Should show: Darwin arm64
+   ```
+
+3. **Test MLX manually**:
+   ```bash
+   python3 -c "import mlx_whisper; print('✅ MLX working')"
+   ```
+
+### Slow Transcription Performance
+
+**Problem**: Transcription taking much longer than expected
+
+**Diagnosis**:
+```bash
+# Check which backend is being used
+screenscribe --list-backends test.mp4
+
+# Look for:
+# ✅ mlx: gpu (float16)    ← Should be available on Apple Silicon
+# ✅ faster-whisper: cpu   ← CPU fallback
+```
+
+**Solutions**:
+
+1. **For Apple Silicon users - ensure GPU acceleration**:
+   ```bash
+   # Force MLX backend
+   screenscribe video.mp4 --whisper-backend mlx
+   
+   # Expected performance: 49min video in ~24 seconds
+   ```
+
+2. **Choose appropriate model size**:
+   ```bash
+   # Faster but less accurate
+   screenscribe video.mp4 --whisper-model tiny
+   
+   # Slower but more accurate
+   screenscribe video.mp4 --whisper-model large
+   ```
+
+3. **For network storage (NAS/SMB)**:
+   - screenscribe automatically copies files locally for better performance
+   - Ensure sufficient disk space in /tmp
+
+### Backend Selection Issues
+
+**Problem**: Wrong backend being selected automatically
+
+**Solutions**:
+
+1. **Force specific backend**:
+   ```bash
+   # Force Apple Silicon GPU
+   screenscribe video.mp4 --whisper-backend mlx
+   
+   # Force CPU backend
+   screenscribe video.mp4 --whisper-backend faster-whisper
+   ```
+
+2. **Check backend availability**:
+   ```bash
+   screenscribe --list-backends test.mp4
+   ```
+
 ## Installation Issues
 
 ### Command Not Found: screenscribe

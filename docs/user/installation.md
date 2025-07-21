@@ -39,7 +39,11 @@ source ~/.bashrc  # or ~/.zshrc
 ### Step 2: Install screenscribe
 
 ```bash
+# Standard installation
 uv tool install screenscribe
+
+# Apple Silicon optimization (M1/M2/M3 Macs) - 2-8x faster transcription
+uv tool install "screenscribe[apple]"
 ```
 
 ### Step 3: Install FFmpeg
@@ -134,8 +138,13 @@ screenscribe --help
 # Verify FFmpeg is working
 ffmpeg -version
 
-# Test with a simple command (will show configuration errors if any)
-screenscribe --help
+# Check available audio backends
+screenscribe --list-backends test.mp4
+
+# Example output on Apple Silicon:
+# 🔍 Available Audio Backends:
+#   ✅ mlx: gpu (float16)         # GPU acceleration available
+#   ✅ faster-whisper: cpu (int8)  # CPU fallback
 ```
 
 ## Troubleshooting
