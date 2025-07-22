@@ -260,9 +260,23 @@ done
 
 ### Apple Silicon (M1/M2/M3)
 - **MLX Backend**: GPU acceleration via Metal Performance Shaders
-- **Installation**: Automatic detection and utilization
+- **Installation**: Automatic detection and utilization with proper compute types
 - **Performance**: 20-30x transcription speedup
-- **Fallback**: Graceful degradation to CPU processing
+- **Model Caching**: Predownload script for offline reliability
+- **Fallback**: Graceful degradation to faster-whisper (int8) → OpenAI Whisper
+- **Error Handling**: Comprehensive error messages with troubleshooting guidance
+
+### MLX Model Management
+```bash
+# Check MLX model cache status
+python3 scripts/predownload_mlx_models.py
+
+# Predownload all models for offline use
+python3 scripts/predownload_mlx_models.py --auto
+
+# Models cached in ~/.cache/huggingface/
+# Automatic fallback if models unavailable
+```
 
 ### General Optimizations
 - **Multi-threading**: CPU-intensive operations parallelized
@@ -271,11 +285,24 @@ done
 - **Quality Settings**: Configurable trade-offs between speed and accuracy
 
 ### Benchmark Results
-| Hardware | Video Length | Processing Time | Speedup |
-|----------|-------------|----------------|---------|
-| M3 Ultra (MLX) | 49 minutes | 103 seconds | 29x |
-| M1 Pro (MLX) | 49 minutes | 200 seconds | 20x |
-| Intel i7 (faster-whisper) | 49 minutes | 15 minutes | 3x |
+| Hardware | Backend | Video Length | Processing Time | Speedup |
+|----------|---------|-------------|----------------|---------|
+| M3 Ultra | MLX (auto-detected) | 49 minutes | 103 seconds | **29x** |
+| M1/M2 Pro | MLX (auto-detected) | 49 minutes | 200 seconds | **20x** |
+| Apple Silicon | faster-whisper (int8) | 49 minutes | 8 minutes | **6x** |
+| Intel i7 | faster-whisper (float16) | 49 minutes | 15 minutes | **3x** |
+
+### Backend Auto-Detection Logic
+```
+Apple Silicon (M1/M2/M3):
+1. Try MLX (if installed & models cached) → 20-30x speedup
+2. Fallback: faster-whisper (int8 compute) → 6x speedup  
+3. Final fallback: OpenAI Whisper → baseline
+
+Other Platforms:
+1. faster-whisper (float16 compute) → 3x speedup
+2. Fallback: OpenAI Whisper → baseline
+```
 
 ## 🤝 Contributing
 

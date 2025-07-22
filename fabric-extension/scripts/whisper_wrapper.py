@@ -13,25 +13,21 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 def transcribe_with_faster_whisper(video_path: str, model: str = "base", language: Optional[str] = None) -> Dict[str, Any]:
-    """Transcribe using faster-whisper (preferred for performance)"""
+    """Transcribe using faster-whisper (CPU/GPU optimized)"""
     try:
         from faster_whisper import WhisperModel
+        import platform
         
-        # Use MLX backend if available on Apple Silicon
+        # Configure device and compute type based on platform
         device = "auto"
-        compute_type = "float16"
         
-        try:
-            import platform
-            if platform.system() == "Darwin" and platform.machine() == "arm64":
-                # Try MLX first for Apple Silicon
-                try:
-                    import mlx_whisper
-                    return transcribe_with_mlx(video_path, model, language)
-                except ImportError:
-                    pass
-        except Exception:
-            pass
+        # Use appropriate compute type for Apple Silicon
+        if platform.system() == "Darwin" and platform.machine() == "arm64":
+            # On Apple Silicon, use int8 for faster-whisper (float16 not well supported)
+            compute_type = "int8"
+        else:
+            # On other platforms, float16 works fine
+            compute_type = "float16"
         
         # Fall back to faster-whisper
         whisper_model = WhisperModel(model, device=device, compute_type=compute_type)
@@ -74,24 +70,28 @@ def transcribe_with_mlx(video_path: str, model: str = "base", language: Optional
     try:
         import mlx_whisper
         
-        # MLX whisper model mapping
+        # MLX whisper model mapping to HuggingFace repositories
         mlx_model_map = {
             "tiny": "mlx-community/whisper-tiny",
-            "base": "mlx-community/whisper-base", 
-            "small": "mlx-community/whisper-small",
+            "base": "mlx-community/whisper-base",
+            "small": "mlx-community/whisper-small", 
             "medium": "mlx-community/whisper-medium",
             "large": "mlx-community/whisper-large-v2",
             "large-v2": "mlx-community/whisper-large-v2",
             "large-v3": "mlx-community/whisper-large-v3"
         }
         
-        mlx_model = mlx_model_map.get(model, "mlx-community/whisper-base")
+        mlx_model_repo = mlx_model_map.get(model, "mlx-community/whisper-base")
         
-        # MLX whisper API
+        # MLX whisper API with proper model repository
+        transcribe_options = {"word_timestamps": True}
+        if language:
+            transcribe_options["language"] = language
+            
         result = mlx_whisper.transcribe(
             video_path,
-            path_or_hf_repo=mlx_model,
-            word_timestamps=True
+            path_or_hf_repo=mlx_model_repo,
+            **transcribe_options
         )
         
         # Format segments
@@ -116,6 +116,15 @@ def transcribe_with_mlx(video_path: str, model: str = "base", language: Optional
         
     except ImportError as e:
         raise ImportError(f"MLX Whisper not available: {e}")
+    except Exception as e:
+        # MLX-specific errors (network, model download, etc.)
+        error_msg = str(e)
+        if "Repository Not Found" in error_msg or "401 Client Error" in error_msg:
+            raise ImportError(f"MLX model download failed: {error_msg}. Try running: python3 scripts/predownload_mlx_models.py")
+        elif "Invalid username or password" in error_msg:
+            raise ImportError(f"HuggingFace authentication issue: {error_msg}. MLX models may need to be predownloaded.")
+        else:
+            raise RuntimeError(f"MLX Whisper transcription failed: {e}")
 
 def transcribe_with_openai_whisper(video_path: str, model: str = "base", language: Optional[str] = None) -> Dict[str, Any]:
     """Transcribe using original OpenAI Whisper (fallback)"""
@@ -135,6 +144,26 @@ def transcribe_with_openai_whisper(video_path: str, model: str = "base", languag
         
     except ImportError as e:
         raise ImportError(f"OpenAI Whisper not available: {e}")
+
+def transcribe_auto(video_path: str, model: str = "base", language: Optional[str] = None) -> Dict[str, Any]:
+    """Auto-select best transcription backend for current platform"""
+    import platform
+    
+    # Try MLX first on Apple Silicon for best performance
+    if platform.system() == "Darwin" and platform.machine() == "arm64":
+        try:
+            import mlx_whisper
+            return transcribe_with_mlx(video_path, model, language)
+        except ImportError:
+            # MLX not available, fall back to faster-whisper with proper compute type
+            pass
+    
+    # Fall back to faster-whisper (works on all platforms)
+    try:
+        return transcribe_with_faster_whisper(video_path, model, language)
+    except ImportError:
+        # Final fallback to OpenAI Whisper
+        return transcribe_with_openai_whisper(video_path, model, language)
 
 def extract_audio_if_needed(input_path: str) -> str:
     """Extract audio from video if needed, return path to audio file"""
@@ -196,7 +225,7 @@ def main():
         elif args.backend == "openai-whisper":
             result = transcribe_with_openai_whisper(audio_path, args.model, args.language)
         else:  # auto
-            result = transcribe_with_faster_whisper(audio_path, args.model, args.language)
+            result = transcribe_auto(audio_path, args.model, args.language)
         
         # Clean up temporary audio file if created
         if audio_path != args.input:

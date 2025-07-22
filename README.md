@@ -12,7 +12,9 @@
 
 **screenscribe** turns your videos into comprehensive, structured notes. It extracts audio transcripts, analyzes visual content with AI, and creates searchable documents. Perfect for lectures, meetings, tutorials, and any video content you want to reference later.
 
-> 🧵 **New**: screenscribe now includes [Fabric integration](./fabric-extension/) for AI-powered video analysis patterns. Thanks to the amazing [Fabric project](https://github.com/danielmiessler/fabric) by Daniel Miessler for providing the pattern framework that makes advanced video analysis workflows possible.
+> 🍎 **Apple Silicon**: Get **20-30x faster** transcription with automatic MLX GPU acceleration on M1/M2/M3 Macs!
+
+> 🧵 **Latest**: Enhanced unified `scribe` CLI with version support, flexible update/uninstall options, and intelligent Apple Silicon auto-detection. Built on the amazing [Fabric project](https://github.com/danielmiessler/fabric) by Daniel Miessler.
 
 ## 🚀 Quick Start
 
@@ -69,13 +71,17 @@ From a 30-minute tutorial, you get:
 
 ## ⚡ Blazing Fast Performance
 
-**Apple Silicon users get 20-30x faster processing:**
+**Intelligent Auto-Detection & Apple Silicon Optimization:**
 
-| Hardware | Processing Time | Speedup |
-|----------|----------------|---------|
-| M3 Ultra | 103s for 49min video | **29x faster** |
-| M1/M2 Pro | 200s for 49min video | **20x faster** |
-| Other platforms | Optimized CPU processing | Still fast! |
+| Hardware | Backend | Processing Time | Speedup |
+|----------|---------|----------------|---------|
+| **Apple Silicon** | MLX (GPU) | 103s for 49min video | **29x faster** |
+| M1/M2/M3 | MLX → faster-whisper | Auto-detects best option | **20-30x** |
+| Other Platforms | faster-whisper | CPU-optimized processing | **3x faster** |
+
+✅ **Auto-detects platform and selects optimal backend**  
+✅ **Predownloads MLX models for offline reliability**  
+✅ **Graceful fallbacks ensure it always works**
 
 ## 🎯 Basic Usage
 
@@ -96,17 +102,25 @@ scribe analyze coding_lesson.mp4 | fabric -p extract_code_from_video
 
 ### Processing Options
 ```bash
+# Automatic backend selection (recommended - auto-detects Apple Silicon)
+scribe analyze video.mp4 | fabric -p analyze_video_content
+
 # Fast processing (good for previews)
 scribe analyze video.mp4 --whisper-model tiny | fabric -p analyze_video_content
 
-# High quality transcription (best for important content)  
-scribe analyze video.mp4 --whisper-model large | fabric -p analyze_video_content
+# High quality transcription (uses MLX GPU on Apple Silicon automatically)
+scribe analyze video.mp4 --whisper-model medium | fabric -p analyze_video_content
 
-# Frames-only processing (skip transcription)
-scribe analyze video.mp4 --skip-transcript | fabric -p analyze_video_content
+# Force specific backend (if needed)
+scribe analyze video.mp4 --whisper-backend mlx | fabric -p analyze_video_content
+scribe analyze video.mp4 --whisper-backend faster-whisper | fabric -p analyze_video_content
+
+# Processing-only options
+scribe analyze video.mp4 --skip-transcript | fabric -p analyze_video_content  # frames only
+scribe analyze video.mp4 --skip-frames | fabric -p analyze_video_content      # transcript only
 
 # Custom frame intervals
-scribe analyze video.mp4 --frame-interval 30 | fabric -p analyze_video_content
+scribe analyze video.mp4 --frame-interval 60 | fabric -p analyze_video_content
 ```
 
 ### YouTube Video Processing
@@ -163,6 +177,9 @@ sudo dnf install ffmpeg go jq
 # Install Fabric (if not already installed)
 go install github.com/danielmiessler/fabric@latest
 
+# For Apple Silicon: Install MLX for 20-30x speedup (optional but recommended)
+pip install mlx-whisper
+
 # For YouTube support (optional)
 pip install yt-dlp
 ```
@@ -177,6 +194,9 @@ cd screenscribe/fabric-extension
 
 # Build and install tools (installs to ~/.local/bin/)
 make build && make install
+
+# For Apple Silicon: Predownload MLX models for offline reliability (recommended)
+python3 scripts/predownload_mlx_models.py --auto
 
 # Copy AI patterns to your Fabric configuration
 cp -r patterns/* ~/.config/fabric/patterns/
@@ -296,19 +316,37 @@ scribe analyze tutorial.mp4 | \
 
 ## 🔄 Updates & Management
 
-### Self-Update
+### Version Information
 ```bash
-# Update scribe tools from GitHub
-scribe update
+# Check version
+scribe --version
+scribe version  # detailed info with git commit and build date
 ```
 
-### Uninstallation
+### Self-Update (Multiple Ways)
 ```bash
-# Remove scribe tools and Fabric patterns
+# Update scribe tools from GitHub (both forms work)
+scribe update
+scribe --update
+```
+
+### Uninstallation (Multiple Ways)
+```bash
+# Remove scribe tools and Fabric patterns (both forms work)
 scribe uninstall
+scribe --uninstall
 
 # Alternative: use Makefile (from source directory)
 make uninstall
+```
+
+### Apple Silicon Model Management
+```bash
+# Check MLX model cache status
+python3 scripts/predownload_mlx_models.py
+
+# Predownload all models for offline use
+python3 scripts/predownload_mlx_models.py --auto
 ```
 
 ## 🛠️ Troubleshooting
@@ -317,18 +355,21 @@ make uninstall
 
 - **"scribe not found"** → Run `make install` from fabric-extension directory, ensure `~/.local/bin` is in PATH
 - **"FFmpeg not found"** → Install FFmpeg for your operating system
-- **Slow on Apple Silicon** → MLX backend auto-detects and provides 20x speedup
+- **Apple Silicon not using MLX** → Install MLX: `pip install mlx-whisper`, then run predownload script
+- **"float16 compute type error"** → Auto-detection will fix this; use `--whisper-backend auto` 
+- **MLX model download failed** → Run `python3 scripts/predownload_mlx_models.py --auto`
 - **AI analysis errors** → Run `fabric --setup` to configure your AI provider
 - **Out of memory** → Use `--whisper-model tiny` for large videos
 - **YouTube download fails** → Install/update yt-dlp: `pip install --upgrade yt-dlp`
-- **YouTube transcript not found** → Use `--youtube-transcript` only if video has captions available
+- **Pattern not found** → Ensure patterns installed: `cp -r patterns/* ~/.config/fabric/patterns/`
 
 **Performance Tips:**
-- Apple Silicon users: MLX backend provides automatic GPU acceleration
-- Use `--whisper-model tiny` for speed, `large` for accuracy
-- Use `--skip-transcript` or `--skip-frames` for faster processing
-- YouTube transcripts: Use `--youtube-transcript` for faster processing when captions are available
-- Fabric patterns can be chained for complex analysis workflows
+- **Apple Silicon**: Install MLX (`pip install mlx-whisper`) for automatic 20-30x GPU acceleration
+- **Model Selection**: Use `tiny` for speed, `medium` for balanced performance, `large` for accuracy
+- **Selective Processing**: Use `--skip-transcript` or `--skip-frames` for faster processing
+- **YouTube Optimization**: Use `--youtube-transcript` when captions are available (much faster)
+- **Offline Reliability**: Run `python3 scripts/predownload_mlx_models.py --auto` to cache models
+- **Workflow Chaining**: Fabric patterns can be chained for complex analysis workflows
 
 **Get More Help:**
 - Check the `--help` flag on any command

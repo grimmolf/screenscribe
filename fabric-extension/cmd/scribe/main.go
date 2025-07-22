@@ -76,7 +76,11 @@ var (
 )
 
 // Global flags
-var verbose bool
+var (
+	verbose      bool
+	updateFlag   bool
+	uninstallFlag bool
+)
 
 // Root command
 var rootCmd = &cobra.Command{
@@ -99,8 +103,22 @@ YouTube examples:
 
 Management:
   scribe update      # Update scribe from GitHub
-  scribe uninstall   # Remove scribe from system`,
+  scribe --update    # Update scribe from GitHub (flag form)
+  scribe uninstall   # Remove scribe from system
+  scribe --uninstall # Remove scribe from system (flag form)`,
 	Version: getVersionString(),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Handle --update flag (but not if --help is also specified)
+		if updateFlag && !cmd.Flags().Changed("help") {
+			return runUpdate()
+		}
+		// Handle --uninstall flag (but not if --help is also specified)
+		if uninstallFlag && !cmd.Flags().Changed("help") {
+			return runUninstall()
+		}
+		// If no subcommand and no flags, show help
+		return cmd.Help()
+	},
 }
 
 // getVersionString returns a formatted version string
@@ -125,6 +143,8 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	rootCmd.Flags().BoolVar(&updateFlag, "update", false, "Update scribe tools from GitHub")
+	rootCmd.Flags().BoolVar(&uninstallFlag, "uninstall", false, "Remove scribe tools from system")
 	
 	// Add subcommands
 	rootCmd.AddCommand(analyzeCmd)
