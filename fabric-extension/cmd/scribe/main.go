@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,12 +10,21 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 )
+
+// Helper function to convert Go bool to Python bool string
+func pythonBool(b bool) string {
+	if b {
+		return "True"
+	}
+	return "False"
+}
 
 // Common data structures shared across subcommands
 type TranscriptSegment struct {
@@ -150,6 +160,7 @@ func init() {
 	rootCmd.AddCommand(analyzeCmd)
 	rootCmd.AddCommand(transcribeCmd)
 	rootCmd.AddCommand(framesCmd)
+	rootCmd.AddCommand(captionsCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(uninstallCmd)
@@ -167,6 +178,13 @@ var (
 	skipTranscript    bool
 	skipFrames        bool
 	youtubeTranscript bool
+	// Caption generation options
+	generateCaptions     bool
+	captionsModelFlag    string
+	ollamaURL            string
+	analyzeCaptionWorkers int
+	twoPassCaptions      bool
+	richModelFlag        string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -175,8 +193,8 @@ var analyzeCmd = &cobra.Command{
 	Long: `Performs comprehensive video analysis by extracting both transcript and frames
 from videos for complete analysis. Supports local files and YouTube URLs.
 
-This command orchestrates both transcription and frame extraction to provide
-complete video analysis data that can be piped to Fabric patterns.
+This command orchestrates transcription and frame extraction, with optional 
+visual caption generation using Ollama vision models for enhanced analysis.
 
 Examples:
   scribe analyze video.mp4 | fabric -p analyze_video_content
@@ -189,9 +207,10 @@ YouTube examples:
   scribe analyze --youtube-transcript "https://youtu.be/VIDEO_ID" | fabric -p summarize_lecture
   scribe analyze --frame-interval 120 "https://youtube.com/watch?v=VIDEO_ID" | fabric -p extract_code_from_video
   
-Trading-specific examples:
-  scribe analyze trading_tutorial.mp4 | fabric -p analyze_trading_video
-  scribe analyze --frame-interval 45 chart_analysis.mp4 | fabric -p extract_technical_analysis`,
+Trading strategy extraction with captions:
+  scribe analyze --generate-captions trading_video.mp4 | fabric -p extract_trading_strategy
+  scribe analyze --generate-captions --captions-two-pass chart_analysis.mp4 | fabric -p extract_trading_strategy
+  scribe analyze --generate-captions --captions-model qwen2.5vl:7b trading_course.mp4 | fabric -p extract_trading_strategy`,
 	Args: cobra.ExactArgs(1),
 	RunE: runAnalyze,
 }
@@ -212,6 +231,14 @@ func init() {
 	analyzeCmd.Flags().BoolVar(&skipTranscript, "skip-transcript", false, "Skip transcript extraction (frames only)")
 	analyzeCmd.Flags().BoolVar(&skipFrames, "skip-frames", false, "Skip frame extraction (transcript only)")
 	analyzeCmd.Flags().BoolVar(&youtubeTranscript, "youtube-transcript", false, "Use YouTube's native transcript instead of Whisper (YouTube URLs only)")
+	
+	// Caption generation options
+	analyzeCmd.Flags().BoolVar(&generateCaptions, "generate-captions", false, "Generate visual captions using Ollama (requires Ollama)")
+	analyzeCmd.Flags().StringVar(&captionsModelFlag, "captions-model", "moondream:1.8b", "Ollama model for caption generation")
+	analyzeCmd.Flags().StringVar(&ollamaURL, "ollama-url", "http://localhost:11434", "Ollama API URL")
+	analyzeCmd.Flags().IntVar(&analyzeCaptionWorkers, "captions-workers", 4, "Number of parallel caption workers")
+	analyzeCmd.Flags().BoolVar(&twoPassCaptions, "captions-two-pass", false, "Use two-pass caption generation (fast + rich models)")
+	analyzeCmd.Flags().StringVar(&richModelFlag, "captions-rich-model", "qwen2.5vl:7b", "Rich model for two-pass captioning")
 }
 
 // Transcribe subcommand (replaces whisper_transcribe)
@@ -276,6 +303,52 @@ func init() {
 	framesCmd.Flags().IntVar(&framesMaxFrames, "max-frames", 50, "Maximum number of frames to extract")
 	framesCmd.Flags().IntVar(&framesQuality, "quality", 2, "JPEG quality 1-5, 1=best, 5=worst")
 	framesCmd.Flags().StringVar(&framesResize, "resize", "320x240", "Resize frames to WxH")
+}
+
+// Captions subcommand - generates visual captions using Ollama vision models
+var (
+	captionsModel       string
+	captionsOllamaURL   string
+	captionsWorkers     int
+	captionsTwoPass     bool
+	captionsRichModel   string
+	captionsFrameData   string
+)
+
+var captionsCmd = &cobra.Command{
+	Use:   "captions [frame_json_or_video_file]",
+	Short: "Generate captions for video frames using Ollama vision models",
+	Long: `Generates descriptive captions for video frames using Ollama vision models.
+Can process frame JSON from 'scribe frames' or extract frames from video directly.
+
+This command integrates with Ollama to provide visual analysis of trading charts,
+technical indicators, and other visual content in videos. Supports both fast
+(moondream) and rich (qwen2.5vl) vision models.
+
+Examples:
+  # Process frames from JSON
+  scribe frames video.mp4 | scribe captions
+
+  # Two-pass processing (fast + rich models)
+  scribe captions --two-pass video.mp4
+
+  # Custom model and workers
+  scribe captions --model qwen2.5vl:7b --workers 2 video.mp4
+
+  # Complete trading strategy extraction workflow  
+  scribe analyze video.mp4 > analysis.json
+  scribe captions --frame-data analysis.json | fabric -p extract_trading_strategy`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runCaptions,
+}
+
+func init() {
+	captionsCmd.Flags().StringVar(&captionsModel, "model", "moondream:1.8b", "Ollama vision model to use")
+	captionsCmd.Flags().StringVar(&captionsOllamaURL, "ollama-url", "http://localhost:11434", "Ollama API URL")
+	captionsCmd.Flags().IntVar(&captionsWorkers, "workers", 4, "Number of parallel workers")
+	captionsCmd.Flags().BoolVar(&captionsTwoPass, "two-pass", false, "Use two-pass processing (fast + rich models)")
+	captionsCmd.Flags().StringVar(&captionsRichModel, "rich-model", "qwen2.5vl:7b", "Rich model for two-pass processing")
+	captionsCmd.Flags().StringVar(&captionsFrameData, "frame-data", "", "JSON file containing frame data")
 }
 
 // Update subcommand
@@ -408,6 +481,47 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Generate captions if requested
+	var captionsResult *ProcessedCaptions
+	if generateCaptions && !skipFrames && frameResult.FrameCount > 0 {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Generating visual captions with Ollama...\n")
+		}
+		
+		captions, err := generateCaptionsForFrames(frameResult, transcriptResult)
+		if err != nil {
+			// Attempt graceful fallback
+			fallback := AttemptCaptionFallback(err, frameResult.FrameCount, len(transcriptResult.Segments) > 0)
+			
+			if fallback.Success {
+				if verbose {
+					fmt.Fprintf(os.Stderr, "⚠️  %s\n", fallback.Message)
+					fmt.Fprintf(os.Stderr, "Continuing with fallback strategy: %s\n", fallback.FallbackStrategy)
+				}
+				// Continue without captions but with fallback strategy noted
+			} else {
+				// Create error recovery for diagnostic info
+				recovery := NewErrorRecovery("Caption Generation")
+				recovery.AddError(err)
+				
+				if verbose {
+					fmt.Fprintf(os.Stderr, "❌ Caption generation failed:\n")
+					fmt.Fprintf(os.Stderr, "%s", recovery.CreateDiagnosticMessage())
+				}
+				
+				// For non-verbose mode, show concise error
+				if !verbose {
+					fmt.Fprintf(os.Stderr, "Warning: Caption generation failed - %v\n", err)
+				}
+			}
+		} else {
+			captionsResult = captions
+			if verbose {
+				fmt.Fprintf(os.Stderr, "✅ Captions generated: %d key frames selected\n", len(captions.KeyFrames))
+			}
+		}
+	}
+
 	// Combine results
 	analysis := VideoAnalysisInput{
 		Transcript: transcriptResult,
@@ -423,19 +537,161 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	// Output JSON for Fabric
-	output, err := json.MarshalIndent(analysis, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to generate JSON output: %v", err)
+	// Add captions to output if generated
+	if captionsResult != nil {
+		// Create extended analysis structure for trading strategy extraction
+		extendedAnalysis := createTradingAnalysisOutput(analysis, *captionsResult)
+		
+		// Output extended JSON for Fabric pattern processing
+		output, err := json.MarshalIndent(extendedAnalysis, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to generate extended JSON output: %v", err)
+		}
+		
+		fmt.Print(string(output))
+	} else {
+		// Output standard JSON for regular Fabric patterns
+		output, err := json.MarshalIndent(analysis, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to generate JSON output: %v", err)
+		}
+		
+		fmt.Print(string(output))
 	}
 
-	fmt.Print(string(output))
-	
 	if verbose {
 		fmt.Fprintf(os.Stderr, "Analysis complete\n")
 	}
 
 	return nil
+}
+
+// TradingAnalysisOutput extends VideoAnalysisInput with caption data for trading strategy extraction
+type TradingAnalysisOutput struct {
+	Transcript TranscriptOutput    `json:"transcript"`
+	Frames     FrameOutput        `json:"frames"`
+	Captions   *ProcessedCaptions `json:"captions,omitempty"`
+	Metadata   VideoMetadata      `json:"metadata"`
+}
+
+// generateCaptionsForFrames generates captions for video frames using Ollama
+func generateCaptionsForFrames(frameResult FrameOutput, transcriptResult TranscriptOutput) (*ProcessedCaptions, error) {
+	// Initialize error recovery
+	recovery := NewErrorRecovery("Caption Generation")
+	defer RecoverFromPanic("Caption Generation")
+	
+	// Validate configuration
+	if validationErrors := ValidateConfiguration(); len(validationErrors) > 0 {
+		for _, err := range validationErrors {
+			recovery.AddError(err)
+		}
+		return nil, fmt.Errorf("configuration validation failed: %v", validationErrors[0])
+	}
+	
+	// Initialize Ollama client
+	client := NewOllamaClient(ollamaURL)
+	
+	// Check if model is available with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
+	available, err := client.IsModelAvailable(ctx, captionsModelFlag)
+	if err != nil {
+		recovery.AddError(err)
+		return nil, err // Return the specific error type for fallback handling
+	}
+	if !available {
+		err := &ModelNotFoundError{Model: captionsModelFlag, Available: []string{}}
+		recovery.AddError(err)
+		return nil, err
+	}
+
+	// Generate captions for all frames with timeout
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	
+	captions, err := client.CaptionFramesParallel(ctx, frameResult.Frames, captionsModelFlag, analyzeCaptionWorkers)
+	if err != nil {
+		recovery.AddError(err)
+		
+		// Check for timeout
+		if ctx.Err() == context.DeadlineExceeded {
+			timeoutErr := &ProcessingTimeoutError{
+				Operation: "Caption Generation",
+				Duration:  "5 minutes",
+				MaxTime:   "5 minutes",
+			}
+			recovery.AddError(timeoutErr)
+			return nil, timeoutErr
+		}
+		
+		return nil, fmt.Errorf("caption generation failed: %w", err)
+	}
+
+	// Two-pass processing if enabled
+	if twoPassCaptions && richModelFlag != captionsModelFlag {
+		richAvailable, err := client.IsModelAvailable(ctx, richModelFlag)
+		if err == nil && richAvailable {
+			// Select key frames for rich processing
+			frameSelector := NewFrameSelector()
+			keyFrameData := frameSelector.SelectKeyFrames(captions, transcriptResult, 12)
+			
+			if len(keyFrameData) > 0 {
+				// Convert back to FrameData for rich processing
+				var keyFrames []FrameData
+				for _, caption := range keyFrameData {
+					// Find corresponding FrameData
+					for _, frame := range frameResult.Frames {
+						if fmt.Sprintf("frame_%04d.jpg", frame.FrameNumber) == caption.Frame {
+							keyFrames = append(keyFrames, frame)
+							break
+						}
+					}
+				}
+				
+				if len(keyFrames) > 0 {
+					richCaptions, err := client.CaptionFramesParallel(ctx, keyFrames, richModelFlag, analyzeCaptionWorkers/2)
+					if err == nil {
+						// Merge rich captions back
+						captions = mergeRichCaptions(captions, richCaptions)
+					}
+				}
+			}
+		}
+	}
+
+	// Process captions using CaptionProcessor
+	processor := NewCaptionProcessor()
+	captionsOutput := CaptionsOutput{
+		SourceFile:    frameResult.SourceFile,
+		ProcessedAt:   time.Now().Unix(),
+		TotalFrames:   frameResult.FrameCount,
+		ProcessedTime: 0, // Will be set by processor
+		Models:        []string{captionsModelFlag},
+		Frames:        captions,
+	}
+
+	if twoPassCaptions {
+		captionsOutput.Models = append(captionsOutput.Models, richModelFlag)
+	}
+
+	// Process captions for trading strategy extraction
+	processed, err := processor.ProcessCaptions(captionsOutput, &transcriptResult, 4000) // 4K token limit for captions
+	if err != nil {
+		return nil, fmt.Errorf("caption processing failed: %w", err)
+	}
+
+	return processed, nil
+}
+
+// createTradingAnalysisOutput creates extended output structure for trading analysis
+func createTradingAnalysisOutput(analysis VideoAnalysisInput, captions ProcessedCaptions) TradingAnalysisOutput {
+	return TradingAnalysisOutput{
+		Transcript: analysis.Transcript,
+		Frames:     analysis.Frames,
+		Captions:   &captions,
+		Metadata:   analysis.Metadata,
+	}
 }
 
 func runTranscribe(cmd *cobra.Command, args []string) error {
@@ -446,46 +702,20 @@ func runTranscribe(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("file not found: %s", videoFile)
 	}
 
-	// Find the Python wrapper script
-	scriptPath, err := findWhisperScript()
-	if err != nil {
-		return fmt.Errorf("could not find whisper_wrapper.py: %v", err)
-	}
+	// Set global variables for transcription functions to use
+	whisperModel = transcribeModel
+	whisperBackend = transcribeBackend
 
-	// Build command arguments
-	cmdArgs := []string{scriptPath, videoFile}
-	
-	if transcribeModel != "base" {
-		cmdArgs = append(cmdArgs, "--model", transcribeModel)
-	}
-	
-	if transcribeLanguage != "" {
-		cmdArgs = append(cmdArgs, "--language", transcribeLanguage)
-	}
-	
-	if transcribeBackend != "auto" {
-		cmdArgs = append(cmdArgs, "--backend", transcribeBackend)
-	}
-	
-	if verbose {
-		cmdArgs = append(cmdArgs, "--verbose")
-	}
-
-	// Execute the Python wrapper
-	cmd2 := exec.Command("python3", cmdArgs...)
-	cmd2.Stderr = os.Stderr
-	
-	output, err := cmd2.Output()
+	// Use the new Go-native transcription
+	result, err := runWhisperTranscribe(videoFile)
 	if err != nil {
 		return fmt.Errorf("transcription failed: %v", err)
 	}
 
-	// Parse and validate JSON output
-	var result TranscriptOutput
-	if err := json.Unmarshal(output, &result); err != nil {
-		// If JSON parsing fails, output the raw result (might be error message)
-		fmt.Print(string(output))
-		return nil
+	// Convert result to JSON and output
+	output, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal output: %v", err)
 	}
 
 	// Output the JSON to stdout for piping to Fabric
@@ -610,44 +840,285 @@ func handleYouTubeURL(url string, useYouTubeTranscript bool) (string, error) {
 }
 
 func runWhisperTranscribe(videoFile string) (TranscriptOutput, error) {
+	// Choose transcription backend based on platform and preference
+	switch whisperBackend {
+	case "mlx":
+		return runMLXWhisperTranscribe(videoFile)
+	case "faster-whisper":
+		return runFasterWhisperTranscribe(videoFile)
+	case "openai-whisper":
+		return runOpenAIWhisperTranscribe(videoFile)
+	default: // auto
+		return runAutoWhisperTranscribe(videoFile)
+	}
+}
+
+// runMLXWhisperTranscribe runs MLX Whisper for Apple Silicon GPU acceleration
+func runMLXWhisperTranscribe(videoFile string) (TranscriptOutput, error) {
 	var result TranscriptOutput
 
-	// Find whisper_wrapper script
-	scriptPath, err := findWhisperScript()
-	if err != nil {
-		return result, fmt.Errorf("whisper_wrapper.py not found: %v", err)
+	// MLX whisper model mapping to HuggingFace repositories
+	mlxModelMap := map[string]string{
+		"tiny":     "mlx-community/whisper-tiny-mlx",
+		"base":     "mlx-community/whisper-base-mlx",
+		"small":    "mlx-community/whisper-small-mlx",
+		"medium":   "mlx-community/whisper-medium-mlx",
+		"large":    "mlx-community/whisper-large-v3-turbo", // Use fastest large model
+		"large-v2": "mlx-community/whisper-large-v2-mlx",
+		"large-v3": "mlx-community/whisper-large-v3-turbo", // Use fastest v3 model
 	}
 
-	// Build command arguments
-	args := []string{scriptPath, videoFile}
+	modelRepo, exists := mlxModelMap[whisperModel]
+	if !exists {
+		modelRepo = mlxModelMap["base"] // fallback to base
+	}
+
+	// Build Python command to call MLX whisper directly
+	pythonScript := fmt.Sprintf(`
+import mlx_whisper
+import json
+import sys
+import time
+
+try:
+	start_time = time.time()
+	result = mlx_whisper.transcribe(
+		"%s",
+		path_or_hf_repo="%s",
+		word_timestamps=True
+	)
 	
-	if whisperModel != "base" {
-		args = append(args, "--model", whisperModel)
+	# Format segments
+	segments_list = []
+	if "segments" in result:
+		for i, segment in enumerate(result["segments"]):
+			segment_dict = {
+				"id": i,
+				"start": segment.get("start", 0),
+				"end": segment.get("end", 0),
+				"text": segment.get("text", "").strip()
+			}
+			segments_list.append(segment_dict)
+	
+	output = {
+		"text": result.get("text", ""),
+		"segments": segments_list,
+		"language": result.get("language", "unknown"),
+		"duration": segments_list[-1]["end"] if segments_list else 0,
+		"backend": "mlx-whisper",
+		"source_file": "%s",
+		"model": "%s",
+		"timestamp": time.time()
 	}
 	
-	if whisperBackend != "auto" {
-		args = append(args, "--backend", whisperBackend)
-	}
+	if %s:
+		print(f"MLX Whisper: Processed in {time.time() - start_time:.1f}s, {len(segments_list)} segments", file=sys.stderr)
 	
+	print(json.dumps(output, indent=2, ensure_ascii=False))
+
+except ImportError as e:
+	print(f"Error: MLX Whisper not available: {e}", file=sys.stderr)
+	sys.exit(1)
+except Exception as e:
+	error_msg = str(e)
+	if "Repository Not Found" in error_msg or "401 Client Error" in error_msg:
+		print(f"Error: MLX model download failed: {error_msg}", file=sys.stderr)
+		print("Try installing models with: python3 -c \"import mlx_whisper; mlx_whisper.transcribe('test.mp4', path_or_hf_repo='mlx-community/whisper-base-mlx')\"", file=sys.stderr)
+	else:
+		print(f"Error: MLX Whisper transcription failed: {e}", file=sys.stderr)
+	sys.exit(1)
+`, videoFile, modelRepo, videoFile, whisperModel, pythonBool(verbose))
+
+	// Execute the Python script
+	cmd := exec.Command("python3", "-c", pythonScript)
 	if verbose {
-		args = append(args, "--verbose")
+		cmd.Stderr = os.Stderr
 	}
 
-	// Execute whisper_wrapper
-	cmd := exec.Command("python3", args...)
-	cmd.Stderr = os.Stderr
-	
 	output, err := cmd.Output()
 	if err != nil {
-		return result, fmt.Errorf("whisper transcription failed: %v", err)
+		return result, fmt.Errorf("MLX whisper transcription failed: %v", err)
 	}
 
 	// Parse JSON output
 	if err := json.Unmarshal(output, &result); err != nil {
-		return result, fmt.Errorf("failed to parse whisper output: %v", err)
+		return result, fmt.Errorf("failed to parse MLX whisper output: %v", err)
 	}
 
 	return result, nil
+}
+
+// runFasterWhisperTranscribe runs faster-whisper backend
+func runFasterWhisperTranscribe(videoFile string) (TranscriptOutput, error) {
+	var result TranscriptOutput
+
+	pythonScript := fmt.Sprintf(`
+import json
+import sys
+import time
+import platform
+
+try:
+	from faster_whisper import WhisperModel
+	
+	# Configure device and compute type based on platform
+	device = "auto"
+	
+	# Use appropriate compute type for Apple Silicon
+	if platform.system() == "Darwin" and platform.machine() == "arm64":
+		compute_type = "int8"  # On Apple Silicon, use int8 for faster-whisper
+	else:
+		compute_type = "float16"  # On other platforms, float16 works fine
+	
+	start_time = time.time()
+	whisper_model = WhisperModel("%s", device=device, compute_type=compute_type)
+	
+	segments, info = whisper_model.transcribe(
+		"%s",
+		vad_filter=True,
+		vad_parameters=dict(min_silence_duration_ms=500)
+	)
+	
+	# Convert segments to list
+	segments_list = []
+	full_text = ""
+	
+	for i, segment in enumerate(segments):
+		segment_dict = {
+			"id": i,
+			"start": segment.start,
+			"end": segment.end,
+			"text": segment.text.strip()
+		}
+		segments_list.append(segment_dict)
+		full_text += segment.text.strip() + " "
+	
+	output = {
+		"text": full_text.strip(),
+		"segments": segments_list,
+		"language": info.language,
+		"duration": segments_list[-1]["end"] if segments_list else 0,
+		"backend": "faster-whisper",
+		"source_file": "%s",
+		"model": "%s",
+		"timestamp": time.time()
+	}
+	
+	if %s:
+		print(f"Faster Whisper: Processed in {time.time() - start_time:.1f}s, {len(segments_list)} segments", file=sys.stderr)
+	
+	print(json.dumps(output, indent=2, ensure_ascii=False))
+
+except ImportError:
+	print("Error: faster-whisper not available", file=sys.stderr)
+	sys.exit(1)
+except Exception as e:
+	print(f"Error: Faster whisper transcription failed: {e}", file=sys.stderr)
+	sys.exit(1)
+`, whisperModel, videoFile, videoFile, whisperModel, pythonBool(verbose))
+
+	// Execute the Python script
+	cmd := exec.Command("python3", "-c", pythonScript)
+	if verbose {
+		cmd.Stderr = os.Stderr
+	}
+
+	output, err := cmd.Output()
+	if err != nil {
+		return result, fmt.Errorf("faster-whisper transcription failed: %v", err)
+	}
+
+	// Parse JSON output
+	if err := json.Unmarshal(output, &result); err != nil {
+		return result, fmt.Errorf("failed to parse faster-whisper output: %v", err)
+	}
+
+	return result, nil
+}
+
+// runOpenAIWhisperTranscribe runs original OpenAI Whisper (fallback)
+func runOpenAIWhisperTranscribe(videoFile string) (TranscriptOutput, error) {
+	var result TranscriptOutput
+
+	pythonScript := fmt.Sprintf(`
+import json
+import sys
+import time
+
+try:
+	import whisper
+	
+	start_time = time.time()
+	whisper_model = whisper.load_model("%s")
+	result = whisper_model.transcribe("%s")
+	
+	output = {
+		"text": result["text"],
+		"segments": result["segments"],
+		"language": result["language"],
+		"duration": result["segments"][-1]["end"] if result["segments"] else 0,
+		"backend": "openai-whisper",
+		"source_file": "%s",
+		"model": "%s", 
+		"timestamp": time.time()
+	}
+	
+	if %s:
+		print(f"OpenAI Whisper: Processed in {time.time() - start_time:.1f}s, {len(result['segments'])} segments", file=sys.stderr)
+	
+	print(json.dumps(output, indent=2, ensure_ascii=False))
+
+except ImportError:
+	print("Error: openai-whisper not available", file=sys.stderr)
+	sys.exit(1)
+except Exception as e:
+	print(f"Error: OpenAI whisper transcription failed: {e}", file=sys.stderr)
+	sys.exit(1)
+`, whisperModel, videoFile, videoFile, whisperModel, pythonBool(verbose))
+
+	// Execute the Python script
+	cmd := exec.Command("python3", "-c", pythonScript)
+	if verbose {
+		cmd.Stderr = os.Stderr
+	}
+
+	output, err := cmd.Output()
+	if err != nil {
+		return result, fmt.Errorf("OpenAI whisper transcription failed: %v", err)
+	}
+
+	// Parse JSON output
+	if err := json.Unmarshal(output, &result); err != nil {
+		return result, fmt.Errorf("failed to parse OpenAI whisper output: %v", err)
+	}
+
+	return result, nil
+}
+
+// runAutoWhisperTranscribe auto-selects best transcription backend for current platform
+func runAutoWhisperTranscribe(videoFile string) (TranscriptOutput, error) {
+	// Try MLX first on Apple Silicon for best performance
+	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		result, err := runMLXWhisperTranscribe(videoFile)
+		if err == nil {
+			return result, nil
+		}
+		if verbose {
+			fmt.Fprintf(os.Stderr, "MLX failed, falling back to faster-whisper: %v\n", err)
+		}
+	}
+	
+	// Fall back to faster-whisper (works on all platforms)
+	result, err := runFasterWhisperTranscribe(videoFile)
+	if err == nil {
+		return result, nil
+	}
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Faster-whisper failed, falling back to OpenAI whisper: %v\n", err)
+	}
+	
+	// Final fallback to OpenAI Whisper
+	return runOpenAIWhisperTranscribe(videoFile)
 }
 
 func runYouTubeTranscribe(youtubeURL string) (TranscriptOutput, error) {
@@ -742,6 +1213,271 @@ func runVideoFrames(videoFile string) (FrameOutput, error) {
 	return result, nil
 }
 
+func runCaptions(cmd *cobra.Command, args []string) error {
+	startTime := time.Now()
+	
+	// Initialize Ollama client
+	client := NewOllamaClient(captionsOllamaURL)
+	
+	var frames []FrameData
+	var sourceFile string
+	var err error
+
+	// Determine input source
+	if len(args) == 1 {
+		input := args[0]
+		
+		// Check if input is a JSON file or video file
+		if filepath.Ext(input) == ".json" || captionsFrameData != "" {
+			// Load frames from JSON
+			var jsonPath string
+			if captionsFrameData != "" {
+				jsonPath = captionsFrameData
+			} else {
+				jsonPath = input
+			}
+			
+			frames, sourceFile, err = loadFramesFromJSON(jsonPath)
+			if err != nil {
+				return fmt.Errorf("failed to load frames from JSON: %v", err)
+			}
+		} else {
+			// Extract frames from video first
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Extracting frames from video: %s\n", input)
+			}
+			
+			frameResult, err := runVideoFrames(input)
+			if err != nil {
+				return fmt.Errorf("frame extraction failed: %v", err)
+			}
+			
+			frames = frameResult.Frames
+			sourceFile = input
+		}
+	} else {
+		// Read from stdin (frame JSON)
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Reading frame data from stdin\n")
+		}
+		
+		frames, sourceFile, err = loadFramesFromStdin()
+		if err != nil {
+			return fmt.Errorf("failed to read frames from stdin: %v", err)
+		}
+	}
+
+	if len(frames) == 0 {
+		return fmt.Errorf("no frames to process")
+	}
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Processing %d frames with model: %s\n", len(frames), captionsModel)
+	}
+
+	// Check if Ollama is available
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
+	available, err := client.IsModelAvailable(ctx, captionsModel)
+	if err != nil {
+		return fmt.Errorf("failed to check Ollama availability: %v", err)
+	}
+	if !available {
+		return fmt.Errorf("model %s is not available in Ollama. Please run: ollama pull %s", captionsModel, captionsModel)
+	}
+
+	// Process frames with progress tracking
+	ctx = context.Background()
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Starting caption generation with %d workers...\n", captionsWorkers)
+	}
+	
+	captions, err := client.CaptionFramesParallel(ctx, frames, captionsModel, captionsWorkers)
+	if err != nil {
+		return fmt.Errorf("caption generation failed: %v", err)
+	}
+
+	// Two-pass processing if enabled
+	if captionsTwoPass && captionsRichModel != captionsModel {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Starting rich pass with model: %s\n", captionsRichModel)
+		}
+		
+		// Check if rich model is available
+		available, err := client.IsModelAvailable(ctx, captionsRichModel)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to check rich model availability: %v\n", err)
+		} else if available {
+			// Select key frames for rich processing (limit to top 25% by confidence)
+			keyFrames := selectKeyFramesForRichPass(frames, captions, 0.25)
+			
+			if len(keyFrames) > 0 {
+				richCaptions, err := client.CaptionFramesParallel(ctx, keyFrames, captionsRichModel, captionsWorkers/2)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: Rich pass failed: %v\n", err)
+				} else {
+					// Merge rich captions back
+					captions = mergeRichCaptions(captions, richCaptions)
+					if verbose {
+						fmt.Fprintf(os.Stderr, "Rich pass completed for %d key frames\n", len(richCaptions))
+					}
+				}
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "Warning: Rich model %s not available, skipping two-pass\n", captionsRichModel)
+		}
+	}
+
+	// Create output
+	output := CaptionsOutput{
+		SourceFile:    sourceFile,
+		ProcessedAt:   time.Now().Unix(),
+		TotalFrames:   len(frames),
+		ProcessedTime: time.Since(startTime).Seconds(),
+		Models:        []string{captionsModel},
+		Frames:        captions,
+	}
+	
+	if captionsTwoPass {
+		output.Models = append(output.Models, captionsRichModel)
+	}
+
+	// Output JSON
+	jsonOutput, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal output: %v", err)
+	}
+
+	fmt.Print(string(jsonOutput))
+	
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Caption generation completed in %.2f seconds\n", time.Since(startTime).Seconds())
+	}
+
+	return nil
+}
+
+// loadFramesFromJSON loads frame data from a JSON file
+func loadFramesFromJSON(jsonPath string) ([]FrameData, string, error) {
+	data, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read JSON file: %v", err)
+	}
+
+	// Try to parse as FrameOutput first
+	var frameOutput FrameOutput
+	if err := json.Unmarshal(data, &frameOutput); err == nil {
+		return frameOutput.Frames, frameOutput.SourceFile, nil
+	}
+
+	// Try to parse as VideoAnalysisInput
+	var analysisInput VideoAnalysisInput
+	if err := json.Unmarshal(data, &analysisInput); err == nil {
+		return analysisInput.Frames.Frames, analysisInput.Frames.SourceFile, nil
+	}
+
+	return nil, "", fmt.Errorf("unable to parse JSON as frame data")
+}
+
+// loadFramesFromStdin loads frame data from stdin
+func loadFramesFromStdin() ([]FrameData, string, error) {
+	data, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read from stdin: %v", err)
+	}
+
+	// Try to parse as FrameOutput first
+	var frameOutput FrameOutput
+	if err := json.Unmarshal(data, &frameOutput); err == nil {
+		return frameOutput.Frames, frameOutput.SourceFile, nil
+	}
+
+	// Try to parse as VideoAnalysisInput  
+	var analysisInput VideoAnalysisInput
+	if err := json.Unmarshal(data, &analysisInput); err == nil {
+		return analysisInput.Frames.Frames, analysisInput.Frames.SourceFile, nil
+	}
+
+	return nil, "", fmt.Errorf("unable to parse stdin as frame data")
+}
+
+// selectKeyFramesForRichPass selects the most important frames for rich processing
+func selectKeyFramesForRichPass(frames []FrameData, captions []FrameCaption, topPercentage float64) []FrameData {
+	if len(captions) == 0 {
+		return []FrameData{}
+	}
+
+	// Create a map for quick lookup
+	captionMap := make(map[string]FrameCaption)
+	for _, caption := range captions {
+		captionMap[caption.Frame] = caption
+	}
+
+	// Sort frames by caption confidence
+	type frameWithConfidence struct {
+		frame      FrameData
+		confidence float64
+	}
+	
+	var framesWithConf []frameWithConfidence
+	for _, frame := range frames {
+		frameKey := fmt.Sprintf("frame_%04d.jpg", frame.FrameNumber)
+		if caption, exists := captionMap[frameKey]; exists {
+			framesWithConf = append(framesWithConf, frameWithConfidence{
+				frame:      frame,
+				confidence: caption.Confidence,
+			})
+		}
+	}
+
+	// Sort by confidence descending
+	for i := 0; i < len(framesWithConf)-1; i++ {
+		for j := i + 1; j < len(framesWithConf); j++ {
+			if framesWithConf[i].confidence < framesWithConf[j].confidence {
+				framesWithConf[i], framesWithConf[j] = framesWithConf[j], framesWithConf[i]
+			}
+		}
+	}
+
+	// Select top percentage
+	numSelected := int(float64(len(framesWithConf)) * topPercentage)
+	if numSelected < 1 {
+		numSelected = 1
+	}
+	if numSelected > len(framesWithConf) {
+		numSelected = len(framesWithConf)
+	}
+
+	var selectedFrames []FrameData
+	for i := 0; i < numSelected; i++ {
+		selectedFrames = append(selectedFrames, framesWithConf[i].frame)
+	}
+
+	return selectedFrames
+}
+
+// mergeRichCaptions merges rich captions back into the main caption set
+func mergeRichCaptions(fastCaptions []FrameCaption, richCaptions []FrameCaption) []FrameCaption {
+	// Create a map for quick lookup of rich captions
+	richMap := make(map[string]FrameCaption)
+	for _, richCaption := range richCaptions {
+		richMap[richCaption.Frame] = richCaption
+	}
+
+	// Replace fast captions with rich ones where available
+	var merged []FrameCaption
+	for _, fastCaption := range fastCaptions {
+		if richCaption, exists := richMap[fastCaption.Frame]; exists {
+			merged = append(merged, richCaption)
+		} else {
+			merged = append(merged, fastCaption)
+		}
+	}
+
+	return merged
+}
+
 func findExecutable(name string) (string, error) {
 	// Try to find the executable in various locations
 	possiblePaths := []string{
@@ -781,45 +1517,7 @@ func findExecutable(name string) (string, error) {
 	return "", fmt.Errorf("%s not found in any expected location", name)
 }
 
-func findWhisperScript() (string, error) {
-	// Try to find the whisper_wrapper.py script in various locations
-	possiblePaths := []string{
-		// Relative to current executable
-		filepath.Join(filepath.Dir(os.Args[0]), "..", "scripts", "whisper_wrapper.py"),
-		// In the same directory as executable
-		filepath.Join(filepath.Dir(os.Args[0]), "whisper_wrapper.py"),
-		// In PATH
-		"whisper_wrapper.py",
-		// Common installation locations
-		"/usr/local/bin/whisper_wrapper.py",
-		"/usr/bin/whisper_wrapper.py",
-		// User's home directory
-		filepath.Join(os.Getenv("HOME"), ".local", "bin", "whisper_wrapper.py"),
-	}
-
-	// Also try to find it relative to the Go module
-	if goPath := os.Getenv("GOPATH"); goPath != "" {
-		possiblePaths = append(possiblePaths, 
-			filepath.Join(goPath, "src", "github.com", "screenscribe", "fabric-extension", "scripts", "whisper_wrapper.py"))
-	}
-
-	for _, path := range possiblePaths {
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	}
-
-	// Try to find using which/where command
-	cmd := exec.Command("which", "whisper_wrapper.py")
-	if output, err := cmd.Output(); err == nil {
-		path := strings.TrimSpace(string(output))
-		if path != "" {
-			return path, nil
-		}
-	}
-
-	return "", fmt.Errorf("whisper_wrapper.py not found in any expected location")
-}
+// findWhisperScript function removed - now using native Go MLX implementation
 
 func findFrameScript() (string, error) {
 	// Try to find the extract_frames.sh script in various locations
