@@ -213,6 +213,9 @@ scribe analyze --generate-captions trading_course.mp4 | fabric -p extract_tradin
 
 # Two-pass visual analysis for detailed chart understanding
 scribe analyze --generate-captions --captions-two-pass chart_webinar.mp4 | fabric -p extract_technical_analysis
+
+# High-quality pipeline with premium vision model for detailed analysis
+scribe analyze "trading_video.webm" | scribe captions --two-pass --rich-model qwen2.5vl:72b | fabric -p extract_trading_strategy
 ```
 
 ### Multi-Step Analysis Workflows
@@ -518,6 +521,11 @@ make install
 - Install Ollama: `curl -fsSL https://ollama.ai/install.sh | sh`
 - Pull model: `ollama pull moondream:1.8b`
 - Check Ollama service: `ollama list`
+
+**"Unknown flag" errors**
+- Use `--rich-model` (not `--keyframe-model`) for two-pass processing
+- Use `scribe [command] --help` to see all available flags
+- Common flag names: `--model`, `--rich-model`, `--two-pass`, `--workers`
 
 **"FFmpeg not found"**
 - Install FFmpeg for your platform
