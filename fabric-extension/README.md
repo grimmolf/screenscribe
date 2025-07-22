@@ -48,11 +48,11 @@ scribe frames tutorial.mp4 --interval 30
 ### Powerful Workflows
 
 ```bash
-# Trading strategy extraction with visual analysis
+# Trading strategy extraction with transcript only
 scribe analyze trading_course.mp4 | fabric -p extract_trading_strategy
 
-# Two-pass processing: fast overview + detailed analysis  
-scribe analyze video.mp4 | scribe captions --two-pass --rich-model qwen2.5vl:72b | fabric -p extract_trading_strategy
+# Trading strategy with visual analysis (CORRECT pipeline)
+scribe analyze --generate-captions --captions-two-pass --captions-rich-model qwen2.5vl:72b trading_course.mp4 | fabric -p extract_trading_strategy
 
 # Batch process multiple videos
 for video in *.mp4; do
@@ -64,13 +64,13 @@ done
 
 ```bash
 # High-frequency trading analysis with frame-by-frame charts
-scribe analyze day_trading.mp4 --frame-interval 5 --generate-captions | fabric -p extract_trading_strategy
+scribe analyze --frame-interval 5 --generate-captions day_trading.mp4 | fabric -p extract_trading_strategy
 
-# Multi-modal analysis: audio + visual content
-scribe analyze --whisper-model large --generate-captions --captions-two-pass webinar.mp4 | fabric -p comprehensive_analysis
+# Multi-modal analysis: audio + visual content  
+scribe analyze --model large --generate-captions --captions-two-pass webinar.mp4 | fabric -p comprehensive_analysis
 
 # Process with specific models
-scribe transcribe --whisper-backend mlx --whisper-model large audio.mp3
+scribe transcribe --backend mlx --model large audio.mp3
 scribe captions --model qwen2.5vl:7b --workers 8 video.mp4
 ```
 
@@ -133,12 +133,21 @@ ollama pull qwen2.5vl:7b   # Detailed model
 
 ### For Traders
 ```bash
-# ICT mentorship video → trading strategy
+# ICT mentorship video → trading strategy (faithful extraction)
 scribe analyze ict_lesson.mp4 | fabric -p extract_trading_strategy
 
-# Chart analysis with visual captions
-scribe analyze chart_review.mp4 --generate-captions | fabric -p extract_technical_analysis
+# Chart analysis with visual captions for comprehensive strategies
+scribe analyze --generate-captions chart_review.mp4 | fabric -p extract_trading_strategy
+
+# High-quality analysis with premium vision models
+scribe analyze --generate-captions --captions-two-pass --captions-rich-model qwen2.5vl:72b trading_video.mp4 | fabric -p extract_trading_strategy
 ```
+
+**🎯 Pattern Features**
+- **Anti-hallucination**: Only extracts concepts explicitly mentioned by speaker
+- **Faithful terminology**: Uses speaker's exact language (e.g., ICT's "seeking liquidity")  
+- **Missing section handling**: Shows "*Not discussed*" for omitted concepts
+- **Quote validation**: Includes direct quotes supporting each extracted point
 
 ### For Educators  
 ```bash
@@ -204,6 +213,20 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull moondream:1.8b
 ollama list  # verify
 ```
+
+**Pipeline failures** ("failed to read frames from stdin")
+```bash
+# WRONG: This fails because analyze outputs transcript, captions expects frames
+scribe analyze video.mp4 | scribe captions --two-pass | fabric -p extract_trading_strategy
+
+# CORRECT: Use single command with integrated captions
+scribe analyze --generate-captions --captions-two-pass video.mp4 | fabric -p extract_trading_strategy
+```
+
+**AI hallucination** (adding concepts not in video)
+- The `extract_trading_strategy` pattern now requires explicit mentions only
+- Sections not discussed by speaker are marked "*Not discussed*"
+- Uses speaker's exact terminology instead of conventional trading concepts
 
 ## 📚 Advanced Configuration
 
